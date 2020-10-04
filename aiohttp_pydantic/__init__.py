@@ -42,13 +42,28 @@ def inject_qs(handler):
     Decorator to unpack the query string in the parameters of the web handler
     regarding annotations.
     """
+
+    nb_header_params = handler.__code__.co_kwonlyargcount
+    if nb_header_params:
+        from_qs = frozenset(handler.__code__.co_varnames[:-nb_header_params])
+        from_header = frozenset(handler.__code__.co_varnames[-nb_header_params:])
+    else:
+        from_qs = frozenset(handler.__code__.co_varnames)
+        from_header = frozenset()
+
     qs_model_class = type(
         'QSModel', (BaseModel,),
-        {'__annotations__': handler.__annotations__})
+        {'__annotations__': {k: v for k, v in handler.__annotations__.items() if k in from_qs and k != 'self'}})
+
+    header_model_class = type(
+        'HeaderModel', (BaseModel,),
+        {'__annotations__': {k: v for k, v in handler.__annotations__.items() if k in from_header  and k != 'self'}})
 
     async def wrapped_handler(self):
         try:
             qs = qs_model_class(**self.request.query)
+            header = header_model_class(**self.request.headers)
+
         except ValidationError as error:
             return json_response(text=error.json(), status=400)
             # raise HTTPBadRequest(
@@ -56,7 +71,7 @@ def inject_qs(handler):
             #         f'Error with query string parameter {", ".join(err["loc"])}:'
             #         f' {err["msg"]}' for err in error.errors()))
 
-        return await handler(self, **qs.dict())
+        return await handler(self, **qs.dict(), **header.dict())
 
     return wrapped_handler
 

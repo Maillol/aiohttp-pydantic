@@ -34,7 +34,7 @@ async def test_get_article_with_wrong_qs_type_should_return_an_error_message(aio
                                   'type': 'type_error.bool'}]
 
 
-async def test_get_article_with_valide_qs_should_return_the_parsed_type(aiohttp_client, loop):
+async def test_get_article_with_valid_qs_should_return_the_parsed_type(aiohttp_client, loop):
     app = web.Application()
     app.router.add_view('/article', ArticleView)
 
