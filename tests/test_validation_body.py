@@ -12,7 +12,7 @@ class ArticleModel(BaseModel):
 class ArticleView(PydanticView):
 
     async def post(self, article: ArticleModel):
-        return web.Response(article.dict())
+        return web.json_response(article.dict())
 
 
 async def test_post_an_article_without_required_field_should_return_an_error_message(aiohttp_client, loop):
