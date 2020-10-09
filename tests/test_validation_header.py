@@ -54,3 +54,14 @@ async def test_get_article_with_valid_header_should_return_the_parsed_type(aioht
     assert resp.status == 200
     assert resp.content_type == 'application/json'
     assert await resp.json() == {'signature': '2020-10-04T18:01:00'}
+
+
+async def test_get_article_with_valid_header_containing_hyphen_should_be_returned(aiohttp_client, loop):
+    app = web.Application()
+    app.router.add_view('/article', ArticleView)
+
+    client = await aiohttp_client(app)
+    resp = await client.get('/article', headers={'Signature-Expired': '2020-10-04T18:01:00'})
+    assert resp.status == 200
+    assert resp.content_type == 'application/json'
+    assert await resp.json() == {'signature': '2020-10-04T18:01:00'}
