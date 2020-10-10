@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='aiohttp_pydantic',
-    version='0.0.1',
+    version='1.0.0',
     description='Aiohttp View using pydantic to validate request body and query sting regarding method annotation',
     keywords='aiohttp pydantic annotation unpack inject validate',
     author='Vincent Maillol',
