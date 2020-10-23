@@ -1,11 +1,10 @@
 from inspect import iscoroutinefunction
-
 from aiohttp.abc import AbstractView
 from aiohttp.hdrs import METH_ALL
 from aiohttp.web_exceptions import HTTPMethodNotAllowed
 from aiohttp.web_response import StreamResponse
 from pydantic import ValidationError
-from typing import Generator, Any, Callable, List, Iterable
+from typing import Generator, Any, Callable, Type, Iterable
 from aiohttp.web import json_response
 from functools import update_wrapper
 
@@ -34,20 +33,20 @@ class PydanticView(AbstractView):
         return self._iter().__await__()
 
     def __init_subclass__(cls, **kwargs):
-        allowed_methods = {
+        cls.allowed_methods = {
             meth_name for meth_name in METH_ALL if hasattr(cls, meth_name.lower())
         }
 
-        async def raise_not_allowed(self):
-            raise HTTPMethodNotAllowed(self.request.method, allowed_methods)
-
         for meth_name in METH_ALL:
-            if meth_name not in allowed_methods:
-                setattr(cls, meth_name.lower(), raise_not_allowed)
+            if meth_name not in cls.allowed_methods:
+                setattr(cls, meth_name.lower(), cls.raise_not_allowed)
             else:
                 handler = getattr(cls, meth_name.lower())
                 decorated_handler = inject_params(handler, cls.parse_func_signature)
                 setattr(cls, meth_name.lower(), decorated_handler)
+
+    async def raise_not_allowed(self):
+        raise HTTPMethodNotAllowed(self.request.method, self.allowed_methods)
 
     @staticmethod
     def parse_func_signature(func: Callable) -> Iterable[AbstractInjector]:
@@ -90,3 +89,13 @@ def inject_params(
 
     update_wrapper(wrapped_handler, handler)
     return wrapped_handler
+
+
+def is_pydantic_view(obj) -> bool:
+    """
+    Return True if obj is a PydanticView subclass else False.
+    """
+    try:
+        return issubclass(obj, PydanticView)
+    except TypeError:
+        return False

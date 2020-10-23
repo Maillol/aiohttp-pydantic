@@ -1,3 +1,5 @@
 from .view import PydanticView
 
-__all__ = ("PydanticView",)
+__version__ = "1.0.0"
+
+__all__ = ("PydanticView", "__version__")

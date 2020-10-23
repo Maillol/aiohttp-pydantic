@@ -1,0 +1,246 @@
+class Info:
+    def __init__(self, spec: dict):
+        self._spec = spec.setdefault("info", {})
+
+    @property
+    def title(self):
+        return self._spec["title"]
+
+    @title.setter
+    def title(self, title):
+        self._spec["title"] = title
+
+    @property
+    def description(self):
+        return self._spec["description"]
+
+    @description.setter
+    def description(self, description):
+        self._spec["description"] = description
+
+    @property
+    def version(self):
+        return self._spec["version"]
+
+    @version.setter
+    def version(self, version):
+        self._spec["version"] = version
+
+
+class RequestBody:
+    def __init__(self, spec: dict):
+        self._spec = spec.setdefault("requestBody", {})
+
+    @property
+    def description(self):
+        return self._spec["description"]
+
+    @description.setter
+    def description(self, description: str):
+        self._spec["description"] = description
+
+    @property
+    def required(self):
+        return self._spec["required"]
+
+    @required.setter
+    def required(self, required: bool):
+        self._spec["required"] = required
+
+    @property
+    def content(self):
+        return self._spec["content"]
+
+    @content.setter
+    def content(self, content: dict):
+        self._spec["content"] = content
+
+
+class Parameter:
+    def __init__(self, spec: dict):
+        self._spec = spec
+
+    @property
+    def name(self) -> str:
+        return self._spec["name"]
+
+    @name.setter
+    def name(self, name: str):
+        self._spec["name"] = name
+
+    @property
+    def in_(self) -> str:
+        return self._spec["in"]
+
+    @in_.setter
+    def in_(self, in_: str):
+        self._spec["in"] = in_
+
+    @property
+    def description(self) -> str:
+        return self._spec["description"]
+
+    @description.setter
+    def description(self, description: str):
+        self._spec["description"] = description
+
+    @property
+    def required(self) -> bool:
+        return self._spec["required"]
+
+    @required.setter
+    def required(self, required: bool):
+        self._spec["required"] = required
+
+    @property
+    def schema(self) -> dict:
+        return self._spec["schema"]
+
+    @schema.setter
+    def schema(self, schema: dict):
+        self._spec["schema"] = schema
+
+
+class Parameters:
+    def __init__(self, spec):
+        self._spec = spec
+        self._spec.setdefault("parameters", [])
+
+    def __getitem__(self, item: int) -> Parameter:
+        if item == len(self._spec["parameters"]):
+            spec = {}
+            self._spec["parameters"].append(spec)
+        else:
+            spec = self._spec["parameters"][item]
+        return Parameter(spec)
+
+
+class OperationObject:
+    def __init__(self, spec: dict):
+        self._spec = spec
+
+    @property
+    def summary(self) -> str:
+        return self._spec["summary"]
+
+    @summary.setter
+    def summary(self, summary: str):
+        self._spec["summary"] = summary
+
+    @property
+    def description(self) -> str:
+        return self._spec["description"]
+
+    @description.setter
+    def description(self, description: str):
+        self._spec["description"] = description
+
+    @property
+    def request_body(self) -> RequestBody:
+        return RequestBody(self._spec)
+
+    @property
+    def parameters(self) -> Parameters:
+        return Parameters(self._spec)
+
+
+class PathItem:
+    def __init__(self, spec: dict):
+        self._spec = spec
+
+    @property
+    def get(self) -> OperationObject:
+        return OperationObject(self._spec.setdefault("get", {}))
+
+    @property
+    def put(self) -> OperationObject:
+        return OperationObject(self._spec.setdefault("put", {}))
+
+    @property
+    def post(self) -> OperationObject:
+        return OperationObject(self._spec.setdefault("post", {}))
+
+    @property
+    def delete(self) -> OperationObject:
+        return OperationObject(self._spec.setdefault("delete", {}))
+
+    @property
+    def options(self) -> OperationObject:
+        return OperationObject(self._spec.setdefault("options", {}))
+
+    @property
+    def head(self) -> OperationObject:
+        return OperationObject(self._spec.setdefault("head", {}))
+
+    @property
+    def patch(self) -> OperationObject:
+        return OperationObject(self._spec.setdefault("patch", {}))
+
+    @property
+    def trace(self) -> OperationObject:
+        return OperationObject(self._spec.setdefault("trace", {}))
+
+
+class Paths:
+    def __init__(self, spec: dict):
+        self._spec = spec.setdefault("paths", {})
+
+    def __getitem__(self, path: str) -> PathItem:
+        spec = self._spec.setdefault(path, {})
+        return PathItem(spec)
+
+
+class Server:
+    def __init__(self, spec: dict):
+        self._spec = spec
+
+    @property
+    def url(self) -> str:
+        return self._spec["url"]
+
+    @url.setter
+    def url(self, url: str):
+        self._spec["url"] = url
+
+    @property
+    def description(self) -> str:
+        return self._spec["url"]
+
+    @description.setter
+    def description(self, description: str):
+        self._spec["description"] = description
+
+
+class Servers:
+    def __init__(self, spec: dict):
+        self._spec = spec
+        self._spec.setdefault("servers", [])
+
+    def __getitem__(self, item: int) -> Server:
+        if item == len(self._spec["servers"]):
+            spec = {}
+            self._spec["servers"].append(spec)
+        else:
+            spec = self._spec["servers"][item]
+        return Server(spec)
+
+
+class OpenApiSpec3:
+    def __init__(self):
+        self._spec = {"openapi": "3.0.0"}
+
+    @property
+    def info(self) -> Info:
+        return Info(self._spec)
+
+    @property
+    def servers(self) -> Servers:
+        return Servers(self._spec)
+
+    @property
+    def paths(self) -> Paths:
+        return Paths(self._spec)
+
+    @property
+    def spec(self):
+        return self._spec
