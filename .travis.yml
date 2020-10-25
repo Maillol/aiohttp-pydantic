@@ -4,7 +4,9 @@ python:
 script:
 - pytest tests/
 install:
+- pip install -U setuptools wheel pip
 - pip install -r test_requirements.txt
+- pip install .
 deploy:
   provider: pypi
   username: __token__

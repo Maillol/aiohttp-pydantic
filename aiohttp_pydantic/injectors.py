@@ -94,6 +94,9 @@ def _parse_func_signature(func: Callable) -> Tuple[dict, dict, dict, dict]:
         if param_name == "self":
             continue
 
+        if param_spec.annotation == param_spec.empty:
+            raise RuntimeError(f"The parameter {param_name} must have an annotation")
+
         if param_spec.kind is param_spec.POSITIONAL_ONLY:
             path_args[param_name] = param_spec.annotation
         elif param_spec.kind is param_spec.POSITIONAL_OR_KEYWORD:
