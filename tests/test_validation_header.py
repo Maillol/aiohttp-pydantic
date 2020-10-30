@@ -1,7 +1,9 @@
-from aiohttp import web
-from aiohttp_pydantic import PydanticView
-from datetime import datetime
 import json
+from datetime import datetime
+
+from aiohttp import web
+
+from aiohttp_pydantic import PydanticView
 
 
 class JSONEncoder(json.JSONEncoder):

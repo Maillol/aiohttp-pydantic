@@ -1,10 +1,11 @@
-from typing import Iterable
 from importlib import resources
+from typing import Iterable
 
 import jinja2
 from aiohttp import web
-from .view import get_oas, oas_ui
 from swagger_ui_bundle import swagger_ui_path
+
+from .view import get_oas, oas_ui
 
 
 def setup(

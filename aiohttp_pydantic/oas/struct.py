@@ -1,3 +1,6 @@
+from typing import Union
+
+
 class Info:
     def __init__(self, spec: dict):
         self._spec = spec.setdefault("info", {})
@@ -115,6 +118,39 @@ class Parameters:
         return Parameter(spec)
 
 
+class Response:
+    def __init__(self, spec: dict):
+        self._spec = spec
+
+    @property
+    def description(self) -> str:
+        return self._spec["description"]
+
+    @description.setter
+    def description(self, description: str):
+        self._spec["description"] = description
+
+    @property
+    def content(self):
+        return self._spec["content"]
+
+    @content.setter
+    def content(self, content: dict):
+        self._spec["content"] = content
+
+
+class Responses:
+    def __init__(self, spec: dict):
+        self._spec = spec.setdefault("responses", {})
+
+    def __getitem__(self, status_code: Union[int, str]) -> Response:
+        if not (100 <= int(status_code) < 600):
+            raise ValueError("status_code must be between 100 and 599")
+
+        spec = self._spec.setdefault(str(status_code), {})
+        return Response(spec)
+
+
 class OperationObject:
     def __init__(self, spec: dict):
         self._spec = spec
@@ -142,6 +178,10 @@ class OperationObject:
     @property
     def parameters(self) -> Parameters:
         return Parameters(self._spec)
+
+    @property
+    def responses(self) -> Responses:
+        return Responses(self._spec)
 
 
 class PathItem:

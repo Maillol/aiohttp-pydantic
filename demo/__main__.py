@@ -1,10 +1,10 @@
 from aiohttp import web
-
-from aiohttp_pydantic import oas
 from aiohttp.web import middleware
 
-from .view import PetItemView, PetCollectionView
+from aiohttp_pydantic import oas
+
 from .model import Model
+from .view import PetCollectionView, PetItemView
 
 
 @middleware

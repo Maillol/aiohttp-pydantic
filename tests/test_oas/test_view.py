@@ -1,8 +1,11 @@
-from pydantic.main import BaseModel
-from aiohttp_pydantic import PydanticView, oas
-from aiohttp import web
+from typing import List, Union
 
 import pytest
+from aiohttp import web
+from pydantic.main import BaseModel
+
+from aiohttp_pydantic import PydanticView, oas
+from aiohttp_pydantic.oas.typing import r200, r201, r204, r404
 
 
 class Pet(BaseModel):
@@ -11,21 +14,21 @@ class Pet(BaseModel):
 
 
 class PetCollectionView(PydanticView):
-    async def get(self):
+    async def get(self) -> r200[List[Pet]]:
         return web.json_response()
 
-    async def post(self, pet: Pet):
+    async def post(self, pet: Pet) -> r201[Pet]:
         return web.json_response()
 
 
 class PetItemView(PydanticView):
-    async def get(self, id: int, /):
+    async def get(self, id: int, /) -> Union[r200[Pet], r404]:
         return web.json_response()
 
     async def put(self, id: int, /, pet: Pet):
         return web.json_response()
 
-    async def delete(self, id: int, /):
+    async def delete(self, id: int, /) -> r204:
         return web.json_response()
 
 
@@ -48,7 +51,28 @@ async def test_generated_oas_should_have_pets_paths(generated_oas):
 
 
 async def test_pets_route_should_have_get_method(generated_oas):
-    assert generated_oas["paths"]["/pets"]["get"] == {}
+    assert generated_oas["paths"]["/pets"]["get"] == {
+        "responses": {
+            "200": {
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "title": "Pet",
+                                "type": "object",
+                                "properties": {
+                                    "id": {"title": "Id", "type": "integer"},
+                                    "name": {"title": "Name", "type": "string"},
+                                },
+                                "required": ["id", "name"],
+                            },
+                        }
+                    }
+                }
+            }
+        }
+    }
 
 
 async def test_pets_route_should_have_post_method(generated_oas):
@@ -57,17 +81,34 @@ async def test_pets_route_should_have_post_method(generated_oas):
             "content": {
                 "application/json": {
                     "schema": {
+                        "title": "Pet",
+                        "type": "object",
                         "properties": {
                             "id": {"title": "Id", "type": "integer"},
                             "name": {"title": "Name", "type": "string"},
                         },
                         "required": ["id", "name"],
-                        "title": "Pet",
-                        "type": "object",
                     }
                 }
             }
-        }
+        },
+        "responses": {
+            "201": {
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "title": "Pet",
+                            "type": "object",
+                            "properties": {
+                                "id": {"title": "Id", "type": "integer"},
+                                "name": {"title": "Name", "type": "string"},
+                            },
+                            "required": ["id", "name"],
+                        }
+                    }
+                }
+            }
+        },
     }
 
 
@@ -79,12 +120,13 @@ async def test_pets_id_route_should_have_delete_method(generated_oas):
     assert generated_oas["paths"]["/pets/{id}"]["delete"] == {
         "parameters": [
             {
+                "required": True,
                 "in": "path",
                 "name": "id",
-                "required": True,
                 "schema": {"type": "integer"},
             }
-        ]
+        ],
+        "responses": {"204": {"content": {}}},
     }
 
 
@@ -97,7 +139,25 @@ async def test_pets_id_route_should_have_get_method(generated_oas):
                 "required": True,
                 "schema": {"type": "integer"},
             }
-        ]
+        ],
+        "responses": {
+            "200": {
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "properties": {
+                                "id": {"title": "Id", "type": "integer"},
+                                "name": {"title": "Name", "type": "string"},
+                            },
+                            "required": ["id", "name"],
+                            "title": "Pet",
+                            "type": "object",
+                        }
+                    }
+                }
+            },
+            "404": {"content": {}},
+        },
     }
 
 

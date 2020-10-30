@@ -1,4 +1,5 @@
 from aiohttp import web
+
 from aiohttp_pydantic import PydanticView
 
 
