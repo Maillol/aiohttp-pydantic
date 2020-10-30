@@ -1,22 +1,16 @@
+from functools import update_wrapper
 from inspect import iscoroutinefunction
+from typing import Any, Callable, Generator, Iterable
+
 from aiohttp.abc import AbstractView
 from aiohttp.hdrs import METH_ALL
+from aiohttp.web import json_response
 from aiohttp.web_exceptions import HTTPMethodNotAllowed
 from aiohttp.web_response import StreamResponse
 from pydantic import ValidationError
-from typing import Generator, Any, Callable, Type, Iterable
-from aiohttp.web import json_response
-from functools import update_wrapper
 
-
-from .injectors import (
-    MatchInfoGetter,
-    HeadersGetter,
-    QueryGetter,
-    BodyGetter,
-    AbstractInjector,
-    _parse_func_signature,
-)
+from .injectors import (AbstractInjector, BodyGetter, HeadersGetter,
+                        MatchInfoGetter, QueryGetter, _parse_func_signature)
 
 
 class PydanticView(AbstractView):

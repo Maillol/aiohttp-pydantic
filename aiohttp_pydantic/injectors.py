@@ -1,11 +1,9 @@
+import abc
+from inspect import signature
 from typing import Callable, Tuple
 
 from aiohttp.web_request import BaseRequest
 from pydantic import BaseModel
-from inspect import signature
-
-
-import abc
 
 
 class AbstractInjector(metaclass=abc.ABCMeta):

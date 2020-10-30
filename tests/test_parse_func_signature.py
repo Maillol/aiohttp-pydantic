@@ -1,6 +1,8 @@
-from aiohttp_pydantic.injectors import _parse_func_signature
-from pydantic import BaseModel
 from uuid import UUID
+
+from pydantic import BaseModel
+
+from aiohttp_pydantic.injectors import _parse_func_signature
 
 
 class User(BaseModel):

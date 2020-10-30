@@ -182,8 +182,59 @@ on the same route, you must use *apps_to_expose* parameters
 
     oas.setup(app, apps_to_expose=[app, sub_app_1])
 
+
+Add annotation to define response content
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The module aiohttp_pydantic.oas.typing provides class to annotate a
+response content.
+
+For example *r200[List[Pet]]* means the server responses with
+the status code 200 and the response content is a List of Pet where Pet will be
+defined using a pydantic.BaseModel
+
+
+.. code-block:: python3
+
+    from aiohttp_pydantic import PydanticView
+    from aiohttp_pydantic.oas.typing import r200, r201, r204, r404
+
+
+    class Pet(BaseModel):
+        id: int
+        name: str
+
+
+    class Error(BaseModel):
+        error: str
+
+
+    class PetCollectionView(PydanticView):
+        async def get(self) -> r200[List[Pet]]:
+            pets = self.request.app["model"].list_pets()
+            return web.json_response([pet.dict() for pet in pets])
+
+        async def post(self, pet: Pet) -> r201[Pet]:
+            self.request.app["model"].add_pet(pet)
+            return web.json_response(pet.dict())
+
+
+    class PetItemView(PydanticView):
+        async def get(self, id: int, /) -> Union[r200[Pet], r404[Error]]:
+            pet = self.request.app["model"].find_pet(id)
+            return web.json_response(pet.dict())
+
+        async def put(self, id: int, /, pet: Pet) -> r200[Pet]:
+            self.request.app["model"].update_pet(id, pet)
+            return web.json_response(pet.dict())
+
+        async def delete(self, id: int, /) -> r204:
+            self.request.app["model"].remove_pet(id)
+            return web.Response(status=204)
+
+
 Demo
-====
+----
 
 Have a look at `demo`_ for a complete example
 
@@ -195,7 +246,6 @@ Have a look at `demo`_ for a complete example
     python -m demo
 
 Go to http://127.0.0.1:8080/oas
-
 
 
 .. _demo: https://github.com/Maillol/aiohttp-pydantic/tree/main/demo

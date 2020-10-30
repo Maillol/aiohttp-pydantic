@@ -1,6 +1,8 @@
-from pydantic import BaseModel
 from typing import Optional
+
 from aiohttp import web
+from pydantic import BaseModel
+
 from aiohttp_pydantic import PydanticView
 
 

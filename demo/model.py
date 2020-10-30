@@ -6,6 +6,10 @@ class Pet(BaseModel):
     name: str
 
 
+class Error(BaseModel):
+    error: str
+
+
 class Model:
     """
     To keep simple this demo, we use a simple dict as database to
