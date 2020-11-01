@@ -145,8 +145,8 @@ To declare a HTTP headers parameters, you must declare your argument as a `keywo
 .. _pydantic Model: https://pydantic-docs.helpmanual.io/usage/models/
 .. _keyword-only argument: https://www.python.org/dev/peps/pep-3102/
 
-Add route to generate Open Api Specification
---------------------------------------------
+Add route to generate Open Api Specification (OAS)
+--------------------------------------------------
 
 aiohttp_pydantic provides a sub-application to serve a route to generate Open Api Specification
 reading annotation in your PydanticView. Use *aiohttp_pydantic.oas.setup()* to add the sub-application
@@ -168,8 +168,8 @@ By default, the route to display the Open Api Specification is /oas but you can 
 
     oas.setup(app, url_prefix='/spec-api')
 
-If you want generate the Open Api Specification from several aiohttp sub-application.
-on the same route, you must use *apps_to_expose* parameters
+If you want generate the Open Api Specification from specific aiohttp sub-applications.
+on the same route, you must use *apps_to_expose* parameter.
 
 
 .. code-block:: python3
@@ -179,9 +179,9 @@ on the same route, you must use *apps_to_expose* parameters
 
     app = web.Application()
     sub_app_1 = web.Application()
+    sub_app_2 = web.Application()
 
-    oas.setup(app, apps_to_expose=[app, sub_app_1])
-
+    oas.setup(app, apps_to_expose=[sub_app_1, sub_app_2])
 
 Add annotation to define response content
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -232,7 +232,6 @@ defined using a pydantic.BaseModel
             self.request.app["model"].remove_pet(id)
             return web.Response(status=204)
 
-
 Demo
 ----
 
@@ -246,6 +245,12 @@ Have a look at `demo`_ for a complete example
     python -m demo
 
 Go to http://127.0.0.1:8080/oas
+
+You can generate the OAS in a json file using the command:
+
+.. code-block:: bash
+
+    python -m aiohttp_pydantic.oas demo.main
 
 
 .. _demo: https://github.com/Maillol/aiohttp-pydantic/tree/main/demo
