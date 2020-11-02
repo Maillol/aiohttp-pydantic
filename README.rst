@@ -1,6 +1,18 @@
 Aiohttp pydantic - Aiohttp View to validate and parse request
 =============================================================
 
+
+Aiohttp pydantic is an `aiohttp view`_ to easily parse and validate request.
+You define using the function annotations what your methods for handling HTTP verbs expects and Aiohttp pydantic parses the HTTP request
+for you, validates the data, and injects that you want as parameters.
+
+
+Features:
+
+- Query string, request body, URL path and HTTP headers validation.
+- Open API Specification generation.
+
+
 How to install
 --------------
 
@@ -254,3 +266,4 @@ You can generate the OAS in a json file using the command:
 
 
 .. _demo: https://github.com/Maillol/aiohttp-pydantic/tree/main/demo
+.. _aiohttp view: https://docs.aiohttp.org/en/stable/web_quickstart.html#class-based-views
