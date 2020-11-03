@@ -9,14 +9,8 @@ from aiohttp.web_exceptions import HTTPMethodNotAllowed
 from aiohttp.web_response import StreamResponse
 from pydantic import ValidationError
 
-from .injectors import (
-    AbstractInjector,
-    BodyGetter,
-    HeadersGetter,
-    MatchInfoGetter,
-    QueryGetter,
-    _parse_func_signature,
-)
+from .injectors import (AbstractInjector, BodyGetter, HeadersGetter,
+                        MatchInfoGetter, QueryGetter, _parse_func_signature)
 
 
 class PydanticView(AbstractView):

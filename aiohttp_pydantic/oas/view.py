@@ -3,25 +3,15 @@ from typing import List, Type
 
 from aiohttp.web import Response, json_response
 from aiohttp.web_app import Application
-from pydantic import BaseModel
 
 from aiohttp_pydantic.oas.struct import OpenApiSpec3, OperationObject, PathItem
 
 from ..injectors import _parse_func_signature
+from ..utils import is_pydantic_base_model
 from ..view import PydanticView, is_pydantic_view
 from .typing import is_status_code_type
 
 JSON_SCHEMA_TYPES = {float: "number", str: "string", int: "integer"}
-
-
-def _is_pydantic_base_model(obj):
-    """
-    Return true is obj is a pydantic.BaseModel subclass.
-    """
-    try:
-        return issubclass(obj, BaseModel)
-    except TypeError:
-        return False
 
 
 class _OASResponseBuilder:
@@ -35,7 +25,7 @@ class _OASResponseBuilder:
 
     @staticmethod
     def _handle_pydantic_base_model(obj):
-        if _is_pydantic_base_model(obj):
+        if is_pydantic_base_model(obj):
             return obj.schema()
         return {}
 

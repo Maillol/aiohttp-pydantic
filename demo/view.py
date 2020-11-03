@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import List, Optional, Union
 
 from aiohttp import web
 
@@ -9,9 +9,11 @@ from .model import Error, Pet
 
 
 class PetCollectionView(PydanticView):
-    async def get(self) -> r200[List[Pet]]:
+    async def get(self, age: Optional[int] = None) -> r200[List[Pet]]:
         pets = self.request.app["model"].list_pets()
-        return web.json_response([pet.dict() for pet in pets])
+        return web.json_response(
+            [pet.dict() for pet in pets if age is None or age == pet.age]
+        )
 
     async def post(self, pet: Pet) -> r201[Pet]:
         self.request.app["model"].add_pet(pet)

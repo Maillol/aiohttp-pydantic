@@ -1,11 +1,13 @@
+from typing import Optional
+
 from aiohttp import web
 
 from aiohttp_pydantic import PydanticView
 
 
 class ArticleView(PydanticView):
-    async def get(self, with_comments: bool):
-        return web.json_response({"with_comments": with_comments})
+    async def get(self, with_comments: bool, age: Optional[int] = None):
+        return web.json_response({"with_comments": with_comments, "age": age})
 
 
 async def test_get_article_without_required_qs_should_return_an_error_message(
@@ -53,7 +55,22 @@ async def test_get_article_with_valid_qs_should_return_the_parsed_type(
     app.router.add_view("/article", ArticleView)
 
     client = await aiohttp_client(app)
+
+    resp = await client.get("/article", params={"with_comments": "yes", "age": 3})
+    assert resp.status == 200
+    assert resp.content_type == "application/json"
+    assert await resp.json() == {"with_comments": True, "age": 3}
+
+
+async def test_get_article_with_valid_qs_and_omitted_optional_should_return_none(
+    aiohttp_client, loop
+):
+    app = web.Application()
+    app.router.add_view("/article", ArticleView)
+
+    client = await aiohttp_client(app)
+
     resp = await client.get("/article", params={"with_comments": "yes"})
     assert resp.status == 200
     assert resp.content_type == "application/json"
-    assert await resp.json() == {"with_comments": True}
+    assert await resp.json() == {"with_comments": True, "age": None}

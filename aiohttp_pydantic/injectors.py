@@ -5,6 +5,8 @@ from typing import Callable, Tuple
 from aiohttp.web_request import BaseRequest
 from pydantic import BaseModel
 
+from .utils import is_pydantic_base_model
+
 
 class AbstractInjector(metaclass=abc.ABCMeta):
     """
@@ -98,7 +100,7 @@ def _parse_func_signature(func: Callable) -> Tuple[dict, dict, dict, dict]:
         if param_spec.kind is param_spec.POSITIONAL_ONLY:
             path_args[param_name] = param_spec.annotation
         elif param_spec.kind is param_spec.POSITIONAL_OR_KEYWORD:
-            if issubclass(param_spec.annotation, BaseModel):
+            if is_pydantic_base_model(param_spec.annotation):
                 body_args[param_name] = param_spec.annotation
             else:
                 qs_args[param_name] = param_spec.annotation
