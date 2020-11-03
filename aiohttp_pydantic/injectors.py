@@ -1,7 +1,9 @@
 import abc
 from inspect import signature
+from json.decoder import JSONDecodeError
 from typing import Callable, Tuple
 
+from aiohttp.web_exceptions import HTTPBadRequest
 from aiohttp.web_request import BaseRequest
 from pydantic import BaseModel
 
@@ -47,7 +49,13 @@ class BodyGetter(AbstractInjector):
         self.arg_name, self.model = next(iter(args_spec.items()))
 
     async def inject(self, request: BaseRequest, args_view: list, kwargs_view: dict):
-        body = await request.json()
+        try:
+            body = await request.json()
+        except JSONDecodeError:
+            raise HTTPBadRequest(
+                text='{"error": "Malformed JSON"}', content_type="application/json"
+            )
+
         kwargs_view[self.arg_name] = self.model(**body)
 
 
