@@ -1,3 +1,4 @@
+from inspect import getdoc
 import typing
 from typing import List, Type
 
@@ -67,6 +68,9 @@ def _add_http_method_to_oas(
     oas_operation: OperationObject = getattr(oas_path, http_method)
     handler = getattr(view, http_method)
     path_args, body_args, qs_args, header_args = _parse_func_signature(handler)
+    description = getdoc(handler)
+    if description:
+        oas_operation.description = description
 
     if body_args:
         oas_operation.request_body.content = {

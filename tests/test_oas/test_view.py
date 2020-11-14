@@ -15,9 +15,13 @@ class Pet(BaseModel):
 
 class PetCollectionView(PydanticView):
     async def get(self) -> r200[List[Pet]]:
+        """
+        Get a list of pets
+        """
         return web.json_response()
 
     async def post(self, pet: Pet) -> r201[Pet]:
+        """Create a Pet"""
         return web.json_response()
 
 
@@ -52,6 +56,7 @@ async def test_generated_oas_should_have_pets_paths(generated_oas):
 
 async def test_pets_route_should_have_get_method(generated_oas):
     assert generated_oas["paths"]["/pets"]["get"] == {
+        "description": "Get a list of pets",
         "responses": {
             "200": {
                 "content": {
@@ -71,12 +76,13 @@ async def test_pets_route_should_have_get_method(generated_oas):
                     }
                 }
             }
-        }
+        },
     }
 
 
 async def test_pets_route_should_have_post_method(generated_oas):
     assert generated_oas["paths"]["/pets"]["post"] == {
+        "description": "Create a Pet",
         "requestBody": {
             "content": {
                 "application/json": {
