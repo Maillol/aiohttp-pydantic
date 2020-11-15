@@ -1,4 +1,5 @@
-from typing import List, Union
+from typing import List, Optional, Union
+from uuid import UUID
 
 import pytest
 from aiohttp import web
@@ -14,7 +15,9 @@ class Pet(BaseModel):
 
 
 class PetCollectionView(PydanticView):
-    async def get(self) -> r200[List[Pet]]:
+    async def get(
+        self, format: str, name: Optional[str] = None, *, promo: Optional[UUID] = None
+    ) -> r200[List[Pet]]:
         """
         Get a list of pets
         """
@@ -57,21 +60,41 @@ async def test_generated_oas_should_have_pets_paths(generated_oas):
 async def test_pets_route_should_have_get_method(generated_oas):
     assert generated_oas["paths"]["/pets"]["get"] == {
         "description": "Get a list of pets",
+        "parameters": [
+            {
+                "in": "query",
+                "name": "format",
+                "required": True,
+                "schema": {"type": "string"},
+            },
+            {
+                "in": "query",
+                "name": "name",
+                "required": False,
+                "schema": {"type": "string"},
+            },
+            {
+                "in": "header",
+                "name": "promo",
+                "required": False,
+                "schema": {"format": "uuid", "type": "string"},
+            },
+        ],
         "responses": {
             "200": {
                 "content": {
                     "application/json": {
                         "schema": {
-                            "type": "array",
                             "items": {
-                                "title": "Pet",
-                                "type": "object",
                                 "properties": {
                                     "id": {"title": "Id", "type": "integer"},
                                     "name": {"title": "Name", "type": "string"},
                                 },
                                 "required": ["id", "name"],
+                                "title": "Pet",
+                                "type": "object",
                             },
+                            "type": "array",
                         }
                     }
                 }

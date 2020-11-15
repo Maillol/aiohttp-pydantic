@@ -1,3 +1,7 @@
+"""
+Utility to write Open Api Specifications using the Python language.
+"""
+
 from typing import Union
 
 
@@ -7,7 +11,7 @@ class Info:
 
     @property
     def title(self):
-        return self._spec["title"]
+        return self._spec.get("title")
 
     @title.setter
     def title(self, title):
@@ -15,7 +19,7 @@ class Info:
 
     @property
     def description(self):
-        return self._spec["description"]
+        return self._spec.get("description")
 
     @description.setter
     def description(self, description):
@@ -23,11 +27,19 @@ class Info:
 
     @property
     def version(self):
-        return self._spec["version"]
+        return self._spec.get("version")
 
     @version.setter
     def version(self, version):
         self._spec["version"] = version
+
+    @property
+    def terms_of_service(self):
+        return self._spec.get("termsOfService")
+
+    @terms_of_service.setter
+    def terms_of_service(self, terms_of_service):
+        self._spec["termsOfService"] = terms_of_service
 
 
 class RequestBody:
@@ -43,8 +55,8 @@ class RequestBody:
         self._spec["description"] = description
 
     @property
-    def required(self):
-        return self._spec["required"]
+    def required(self) -> bool:
+        return self._spec.get("required", False)
 
     @required.setter
     def required(self, required: bool):
@@ -220,6 +232,22 @@ class PathItem:
     def trace(self) -> OperationObject:
         return OperationObject(self._spec.setdefault("trace", {}))
 
+    @property
+    def description(self) -> str:
+        return self._spec["description"]
+
+    @description.setter
+    def description(self, description: str):
+        self._spec["description"] = description
+
+    @property
+    def summary(self) -> str:
+        return self._spec["summary"]
+
+    @summary.setter
+    def summary(self, summary: str):
+        self._spec["summary"] = summary
+
 
 class Paths:
     def __init__(self, spec: dict):
@@ -244,7 +272,7 @@ class Server:
 
     @property
     def description(self) -> str:
-        return self._spec["url"]
+        return self._spec["description"]
 
     @description.setter
     def description(self, description: str):

@@ -13,7 +13,7 @@ Example:
 
 from functools import lru_cache
 from types import new_class
-from typing import Protocol, TypeVar
+from typing import Protocol, TypeVar, Optional, Type
 
 RespContents = TypeVar("RespContents", covariant=True)
 
@@ -24,9 +24,10 @@ _status_code = frozenset(f"r{code}" for code in range(100, 600))
 def _make_status_code_type(status_code):
     if status_code in _status_code:
         return new_class(status_code, (Protocol[RespContents],))
+    return None
 
 
-def is_status_code_type(obj):
+def is_status_code_type(obj) -> bool:
     """
     Return True if obj is a status code type such as _200 or _404.
     """
