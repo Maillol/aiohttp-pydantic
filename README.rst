@@ -1,6 +1,16 @@
 Aiohttp pydantic - Aiohttp View to validate and parse request
 =============================================================
 
+.. image:: https://travis-ci.org/Maillol/aiohttp-pydantic.svg?branch=main
+  :target: https://travis-ci.org/Maillol/aiohttp-pydantic
+
+.. image:: https://img.shields.io/pypi/v/aiohttp-pydantic
+  :target: https://img.shields.io/pypi/v/aiohttp-pydantic
+  :alt: Latest PyPI package version
+
+.. image:: https://codecov.io/gh/Maillol/aiohttp-pydantic/branch/add_code_coverage/graph/badge.svg
+  :target: https://codecov.io/gh/Maillol/aiohttp-pydantic
+  :alt: codecov.io status for master branch
 
 Aiohttp pydantic is an `aiohttp view`_ to easily parse and validate request.
 You define using the function annotations what your methods for handling HTTP verbs expects and Aiohttp pydantic parses the HTTP request

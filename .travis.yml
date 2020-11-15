@@ -2,11 +2,14 @@ language: python
 python:
 - '3.8'
 script:
-- pytest tests/
+- pytest --cov-report=xml --cov=aiohttp_pydantic tests/
 install:
 - pip install -U setuptools wheel pip
-- pip install -r test_requirements.txt
+- pip install -r requirements/test.txt
+- pip install -r requirements/ci.txt
 - pip install .
+after_success:
+  - codecov
 deploy:
   provider: pypi
   username: __token__
