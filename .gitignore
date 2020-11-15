@@ -1,6 +1,9 @@
+.coverage
 .idea/
 .pytest_cache
 __pycache__
 aiohttp_pydantic.egg-info/
 build/
+coverage.xml
 dist/
+
