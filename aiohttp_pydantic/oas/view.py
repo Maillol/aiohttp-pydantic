@@ -1,6 +1,9 @@
-from inspect import getdoc
 import typing
+from datetime import date, datetime
+from inspect import getdoc
+from itertools import count
 from typing import List, Type
+from uuid import UUID
 
 from aiohttp.web import Response, json_response
 from aiohttp.web_app import Application
@@ -12,7 +15,30 @@ from ..utils import is_pydantic_base_model
 from ..view import PydanticView, is_pydantic_view
 from .typing import is_status_code_type
 
-JSON_SCHEMA_TYPES = {float: "number", str: "string", int: "integer"}
+JSON_SCHEMA_TYPES = {
+    float: {"type": "number"},
+    str: {"type": "string"},
+    int: {"type": "integer"},
+    UUID: {"type": "string", "format": "uuid"},
+    bool: {"type": "boolean"},
+    datetime: {"type": "string", "format": "date-time"},
+    date: {"type": "string", "format": "date"},
+}
+
+
+def _handle_optional(type_):
+    """
+    Returns the type wrapped in Optional or None.
+
+    >>>  _handle_optional(int)
+    >>>  _handle_optional(Optional[str])
+    <class 'str'>
+    """
+    if typing.get_origin(type_) is typing.Union:
+        args = typing.get_args(type_)
+        if len(args) == 2 and type(None) in args:
+            return next(iter(set(args) - {type(None)}))
+    return None
 
 
 class _OASResponseBuilder:
@@ -77,24 +103,23 @@ def _add_http_method_to_oas(
             "application/json": {"schema": next(iter(body_args.values())).schema()}
         }
 
-    i = 0
-    for i, (name, type_) in enumerate(path_args.items()):
-        oas_operation.parameters[i].required = True
-        oas_operation.parameters[i].in_ = "path"
-        oas_operation.parameters[i].name = name
-        oas_operation.parameters[i].schema = {"type": JSON_SCHEMA_TYPES[type_]}
-
-    for i, (name, type_) in enumerate(qs_args.items(), i + 1):
-        oas_operation.parameters[i].required = False
-        oas_operation.parameters[i].in_ = "query"
-        oas_operation.parameters[i].name = name
-        oas_operation.parameters[i].schema = {"type": JSON_SCHEMA_TYPES[type_]}
-
-    for i, (name, type_) in enumerate(header_args.items(), i + 1):
-        oas_operation.parameters[i].required = False
-        oas_operation.parameters[i].in_ = "header"
-        oas_operation.parameters[i].name = name
-        oas_operation.parameters[i].schema = {"type": JSON_SCHEMA_TYPES[type_]}
+    indexes = count()
+    for args_location, args in (
+        ("path", path_args.items()),
+        ("query", qs_args.items()),
+        ("header", header_args.items()),
+    ):
+        for name, type_ in args:
+            i = next(indexes)
+            oas_operation.parameters[i].in_ = args_location
+            oas_operation.parameters[i].name = name
+            optional_type = _handle_optional(type_)
+            if optional_type is None:
+                oas_operation.parameters[i].schema = JSON_SCHEMA_TYPES[type_]
+                oas_operation.parameters[i].required = True
+            else:
+                oas_operation.parameters[i].schema = JSON_SCHEMA_TYPES[optional_type]
+                oas_operation.parameters[i].required = False
 
     return_type = handler.__annotations__.get("return")
     if return_type is not None:
