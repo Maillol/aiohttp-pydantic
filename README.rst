@@ -8,7 +8,7 @@ Aiohttp pydantic - Aiohttp View to validate and parse request
   :target: https://img.shields.io/pypi/v/aiohttp-pydantic
   :alt: Latest PyPI package version
 
-.. image:: https://codecov.io/gh/Maillol/aiohttp-pydantic/branch/add_code_coverage/graph/badge.svg
+.. image:: https://codecov.io/gh/Maillol/aiohttp-pydantic/branch/main/graph/badge.svg
   :target: https://codecov.io/gh/Maillol/aiohttp-pydantic
   :alt: codecov.io status for master branch
 
