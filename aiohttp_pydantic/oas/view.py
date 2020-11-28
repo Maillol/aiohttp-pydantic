@@ -1,9 +1,7 @@
 import typing
-from datetime import date, datetime
 from inspect import getdoc
 from itertools import count
 from typing import List, Type
-from uuid import UUID
 
 from aiohttp.web import Response, json_response
 from aiohttp.web_app import Application
@@ -15,16 +13,6 @@ from ..injectors import _parse_func_signature
 from ..utils import is_pydantic_base_model
 from ..view import PydanticView, is_pydantic_view
 from .typing import is_status_code_type
-
-JSON_SCHEMA_TYPES = {
-    float: {"type": "number"},
-    str: {"type": "string"},
-    int: {"type": "integer"},
-    UUID: {"type": "string", "format": "uuid"},
-    bool: {"type": "boolean"},
-    datetime: {"type": "string", "format": "date-time"},
-    date: {"type": "string", "format": "date"},
-}
 
 
 def _handle_optional(type_):
@@ -48,13 +36,16 @@ class _OASResponseBuilder:
     generate the OAS operation response.
     """
 
-    def __init__(self, oas_operation):
+    def __init__(self, oas: OpenApiSpec3, oas_operation):
         self._oas_operation = oas_operation
+        self._oas = oas
 
-    @staticmethod
-    def _handle_pydantic_base_model(obj):
+    def _handle_pydantic_base_model(self, obj):
         if is_pydantic_base_model(obj):
-            return obj.schema()
+            response_schema = obj.schema(ref_template="#/components/schemas/{model}")
+            if def_sub_schemas := response_schema.get("definitions", None):
+                self._oas.components.schemas.update(def_sub_schemas)
+            return response_schema
         return {}
 
     def _handle_list(self, obj):
@@ -89,7 +80,7 @@ class _OASResponseBuilder:
 
 
 def _add_http_method_to_oas(
-    oas_path: PathItem, http_method: str, view: Type[PydanticView]
+    oas: OpenApiSpec3, oas_path: PathItem, http_method: str, view: Type[PydanticView]
 ):
     http_method = http_method.lower()
     oas_operation: OperationObject = getattr(oas_path, http_method)
@@ -102,8 +93,14 @@ def _add_http_method_to_oas(
         oas_operation.description = description
 
     if body_args:
+        body_schema = next(iter(body_args.values())).schema(
+            ref_template="#/components/schemas/{model}"
+        )
+        if def_sub_schemas := body_schema.get("definitions", None):
+            oas.components.schemas.update(def_sub_schemas)
+
         oas_operation.request_body.content = {
-            "application/json": {"schema": next(iter(body_args.values())).schema()}
+            "application/json": {"schema": body_schema}
         }
 
     indexes = count()
@@ -122,14 +119,15 @@ def _add_http_method_to_oas(
             if name in defaults:
                 attrs["__root__"] = defaults[name]
 
-            oas_operation.parameters[i].schema = type(
-                name, (BaseModel,), attrs
-            ).schema()
+            oas_operation.parameters[i].schema = type(name, (BaseModel,), attrs).schema(
+                ref_template="#/components/schemas/{model}"
+            )
+
             oas_operation.parameters[i].required = optional_type is None
 
     return_type = handler.__annotations__.get("return")
     if return_type is not None:
-        _OASResponseBuilder(oas_operation).build(return_type)
+        _OASResponseBuilder(oas, oas_operation).build(return_type)
 
 
 def generate_oas(apps: List[Application]) -> dict:
@@ -148,9 +146,9 @@ def generate_oas(apps: List[Application]) -> dict:
                 path = oas.paths[info.get("path", info.get("formatter"))]
                 if resource_route.method == "*":
                     for method_name in view.allowed_methods:
-                        _add_http_method_to_oas(path, method_name, view)
+                        _add_http_method_to_oas(oas, path, method_name, view)
                 else:
-                    _add_http_method_to_oas(path, resource_route.method, view)
+                    _add_http_method_to_oas(oas, path, resource_route.method, view)
 
     return oas.spec
 

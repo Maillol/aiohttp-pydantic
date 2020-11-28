@@ -293,6 +293,15 @@ class Servers:
         return Server(spec)
 
 
+class Components:
+    def __init__(self, spec: dict):
+        self._spec = spec.setdefault("components", {})
+
+    @property
+    def schemas(self) -> dict:
+        return self._spec.setdefault("schemas", {})
+
+
 class OpenApiSpec3:
     def __init__(self):
         self._spec = {"openapi": "3.0.0"}
@@ -308,6 +317,10 @@ class OpenApiSpec3:
     @property
     def paths(self) -> Paths:
         return Paths(self._spec)
+
+    @property
+    def components(self) -> Components:
+        return Components(self._spec)
 
     @property
     def spec(self):
