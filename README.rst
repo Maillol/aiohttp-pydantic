@@ -68,6 +68,7 @@ Example:
     $ curl -X GET http://127.0.0.1:8080/article?with_comments=a
     [
       {
+        "in": "query string",
         "loc": [
           "with_comments"
         ],
@@ -82,6 +83,7 @@ Example:
     $ curl -H "Content-Type: application/json" -X post http://127.0.0.1:8080/article --data '{}'
     [
       {
+        "in": "body",
         "loc": [
           "name"
         ],
@@ -116,7 +118,7 @@ Example:
 Inject Query String Parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-To declare a query parameters, you must declare your argument as simple argument:
+To declare a query parameters, you must declare your argument as a simple argument:
 
 
 .. code-block:: python3
@@ -131,7 +133,7 @@ To declare a query parameters, you must declare your argument as simple argument
 Inject Request Body
 ~~~~~~~~~~~~~~~~~~~
 
-To declare a body parameters, you must declare your argument as a simple argument annotated with `pydantic Model`_.
+To declare a body parameter, you must declare your argument as a simple argument annotated with `pydantic Model`_.
 
 
 .. code-block:: python3

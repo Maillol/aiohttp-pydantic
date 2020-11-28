@@ -27,7 +27,12 @@ async def test_post_an_article_without_required_field_should_return_an_error_mes
     assert resp.status == 400
     assert resp.content_type == "application/json"
     assert await resp.json() == [
-        {"loc": ["name"], "msg": "field required", "type": "value_error.missing"}
+        {
+            "in": "body",
+            "loc": ["name"],
+            "msg": "field required",
+            "type": "value_error.missing",
+        }
     ]
 
 
@@ -43,6 +48,7 @@ async def test_post_an_article_with_wrong_type_field_should_return_an_error_mess
     assert resp.content_type == "application/json"
     assert await resp.json() == [
         {
+            "in": "body",
             "loc": ["nb_page"],
             "msg": "value is not a valid integer",
             "type": "type_error.integer",

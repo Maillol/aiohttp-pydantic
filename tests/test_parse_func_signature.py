@@ -38,32 +38,42 @@ def test_parse_func_signature():
     def path_body_qs_and_header(self, id: str, /, user: User, page: int, *, auth: UUID):
         pass
 
-    assert _parse_func_signature(body_only) == ({}, {"user": User}, {}, {})
-    assert _parse_func_signature(path_only) == ({"id": str}, {}, {}, {})
-    assert _parse_func_signature(qs_only) == ({}, {}, {"page": int}, {})
-    assert _parse_func_signature(header_only) == ({}, {}, {}, {"auth": UUID})
-    assert _parse_func_signature(path_and_qs) == ({"id": str}, {}, {"page": int}, {})
+    assert _parse_func_signature(body_only) == ({}, {"user": User}, {}, {}, {})
+    assert _parse_func_signature(path_only) == ({"id": str}, {}, {}, {}, {})
+    assert _parse_func_signature(qs_only) == ({}, {}, {"page": int}, {}, {})
+    assert _parse_func_signature(header_only) == ({}, {}, {}, {"auth": UUID}, {})
+    assert _parse_func_signature(path_and_qs) == (
+        {"id": str},
+        {},
+        {"page": int},
+        {},
+        {},
+    )
     assert _parse_func_signature(path_and_header) == (
         {"id": str},
         {},
         {},
         {"auth": UUID},
+        {},
     )
     assert _parse_func_signature(qs_and_header) == (
         {},
         {},
         {"page": int},
         {"auth": UUID},
+        {},
     )
     assert _parse_func_signature(path_qs_and_header) == (
         {"id": str},
         {},
         {"page": int},
         {"auth": UUID},
+        {},
     )
     assert _parse_func_signature(path_body_qs_and_header) == (
         {"id": str},
         {"user": User},
         {"page": int},
         {"auth": UUID},
+        {},
     )

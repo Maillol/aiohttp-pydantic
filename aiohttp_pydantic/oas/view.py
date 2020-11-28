@@ -7,6 +7,7 @@ from uuid import UUID
 
 from aiohttp.web import Response, json_response
 from aiohttp.web_app import Application
+from pydantic import BaseModel
 
 from aiohttp_pydantic.oas.struct import OpenApiSpec3, OperationObject, PathItem
 
@@ -93,7 +94,9 @@ def _add_http_method_to_oas(
     http_method = http_method.lower()
     oas_operation: OperationObject = getattr(oas_path, http_method)
     handler = getattr(view, http_method)
-    path_args, body_args, qs_args, header_args = _parse_func_signature(handler)
+    path_args, body_args, qs_args, header_args, defaults = _parse_func_signature(
+        handler
+    )
     description = getdoc(handler)
     if description:
         oas_operation.description = description
@@ -114,12 +117,15 @@ def _add_http_method_to_oas(
             oas_operation.parameters[i].in_ = args_location
             oas_operation.parameters[i].name = name
             optional_type = _handle_optional(type_)
-            if optional_type is None:
-                oas_operation.parameters[i].schema = JSON_SCHEMA_TYPES[type_]
-                oas_operation.parameters[i].required = True
-            else:
-                oas_operation.parameters[i].schema = JSON_SCHEMA_TYPES[optional_type]
-                oas_operation.parameters[i].required = False
+
+            attrs = {"__annotations__": {"__root__": type_}}
+            if name in defaults:
+                attrs["__root__"] = defaults[name]
+
+            oas_operation.parameters[i].schema = type(
+                name, (BaseModel,), attrs
+            ).schema()
+            oas_operation.parameters[i].required = optional_type is None
 
     return_type = handler.__annotations__.get("return")
     if return_type is not None:
@@ -134,15 +140,17 @@ def generate_oas(apps: List[Application]) -> dict:
     for app in apps:
         for resources in app.router.resources():
             for resource_route in resources:
-                if is_pydantic_view(resource_route.handler):
-                    view: Type[PydanticView] = resource_route.handler
-                    info = resource_route.get_info()
-                    path = oas.paths[info.get("path", info.get("formatter"))]
-                    if resource_route.method == "*":
-                        for method_name in view.allowed_methods:
-                            _add_http_method_to_oas(path, method_name, view)
-                    else:
-                        _add_http_method_to_oas(path, resource_route.method, view)
+                if not is_pydantic_view(resource_route.handler):
+                    continue
+
+                view: Type[PydanticView] = resource_route.handler
+                info = resource_route.get_info()
+                path = oas.paths[info.get("path", info.get("formatter"))]
+                if resource_route.method == "*":
+                    for method_name in view.allowed_methods:
+                        _add_http_method_to_oas(path, method_name, view)
+                else:
+                    _add_http_method_to_oas(path, resource_route.method, view)
 
     return oas.spec
 

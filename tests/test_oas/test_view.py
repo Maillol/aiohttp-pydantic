@@ -65,19 +65,19 @@ async def test_pets_route_should_have_get_method(generated_oas):
                 "in": "query",
                 "name": "format",
                 "required": True,
-                "schema": {"type": "string"},
+                "schema": {"title": "format", "type": "string"},
             },
             {
                 "in": "query",
                 "name": "name",
                 "required": False,
-                "schema": {"type": "string"},
+                "schema": {"title": "name", "type": "string"},
             },
             {
                 "in": "header",
                 "name": "promo",
                 "required": False,
-                "schema": {"format": "uuid", "type": "string"},
+                "schema": {"title": "promo", "format": "uuid", "type": "string"},
             },
         ],
         "responses": {
@@ -152,7 +152,7 @@ async def test_pets_id_route_should_have_delete_method(generated_oas):
                 "required": True,
                 "in": "path",
                 "name": "id",
-                "schema": {"type": "integer"},
+                "schema": {"title": "id", "type": "integer"},
             }
         ],
         "responses": {"204": {"content": {}}},
@@ -166,7 +166,7 @@ async def test_pets_id_route_should_have_get_method(generated_oas):
                 "in": "path",
                 "name": "id",
                 "required": True,
-                "schema": {"type": "integer"},
+                "schema": {"title": "id", "type": "integer"},
             }
         ],
         "responses": {
@@ -197,7 +197,7 @@ async def test_pets_id_route_should_have_put_method(generated_oas):
                 "in": "path",
                 "name": "id",
                 "required": True,
-                "schema": {"type": "integer"},
+                "schema": {"title": "id", "type": "integer"},
             }
         ],
         "requestBody": {

@@ -13,7 +13,7 @@ Example:
 
 from functools import lru_cache
 from types import new_class
-from typing import Protocol, TypeVar, Optional, Type
+from typing import Protocol, TypeVar
 
 RespContents = TypeVar("RespContents", covariant=True)
 

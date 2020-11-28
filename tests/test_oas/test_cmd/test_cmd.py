@@ -30,6 +30,7 @@ def test_show_oad_of_app(cmd_line, capfd):
                             "name": "a",
                             "required": true,
                             "schema": {
+                                "title": "a",
                                 "type": "integer"
                             }
                         }
@@ -44,6 +45,7 @@ def test_show_oad_of_app(cmd_line, capfd):
                             "name": "b",
                             "required": true,
                             "schema": {
+                                "title": "b",
                                 "type": "integer"
                             }
                         }
@@ -75,6 +77,7 @@ def test_show_oad_of_sub_app(cmd_line, capfd):
                             "name": "b",
                             "required": true,
                             "schema": {
+                                "title": "b",
                                 "type": "integer"
                             }
                         }
@@ -106,6 +109,7 @@ def test_show_oad_of_a_callable(cmd_line, capfd):
                             "name": "a",
                             "required": true,
                             "schema": {
+                                "title": "a",
                                 "type": "integer"
                             }
                         }

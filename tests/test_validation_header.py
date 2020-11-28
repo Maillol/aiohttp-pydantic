@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+from enum import Enum
 
 from aiohttp import web
 
@@ -21,6 +22,16 @@ class ArticleView(PydanticView):
         )
 
 
+class FormatEnum(str, Enum):
+    UTM = "UMT"
+    MGRS = "MGRS"
+
+
+class ViewWithEnumType(PydanticView):
+    async def get(self, *, format: FormatEnum):
+        return web.json_response({"format": format}, dumps=JSONEncoder().encode)
+
+
 async def test_get_article_without_required_header_should_return_an_error_message(
     aiohttp_client, loop
 ):
@@ -33,6 +44,7 @@ async def test_get_article_without_required_header_should_return_an_error_messag
     assert resp.content_type == "application/json"
     assert await resp.json() == [
         {
+            "in": "headers",
             "loc": ["signature_expired"],
             "msg": "field required",
             "type": "value_error.missing",
@@ -52,6 +64,7 @@ async def test_get_article_with_wrong_header_type_should_return_an_error_message
     assert resp.content_type == "application/json"
     assert await resp.json() == [
         {
+            "in": "headers",
             "loc": ["signature_expired"],
             "msg": "invalid datetime format",
             "type": "value_error.datetime",
@@ -87,3 +100,37 @@ async def test_get_article_with_valid_header_containing_hyphen_should_be_returne
     assert resp.status == 200
     assert resp.content_type == "application/json"
     assert await resp.json() == {"signature": "2020-10-04T18:01:00"}
+
+
+async def test_wrong_value_to_header_defined_with_str_enum(aiohttp_client, loop):
+    app = web.Application()
+    app.router.add_view("/coord", ViewWithEnumType)
+
+    client = await aiohttp_client(app)
+    resp = await client.get("/coord", headers={"format": "WGS84"})
+    assert (
+        await resp.json()
+        == [
+            {
+                "ctx": {"enum_values": ["UMT", "MGRS"]},
+                "in": "headers",
+                "loc": ["format"],
+                "msg": "value is not a valid enumeration member; permitted: 'UMT', 'MGRS'",
+                "type": "type_error.enum",
+            }
+        ]
+        != {"signature": "2020-10-04T18:01:00"}
+    )
+    assert resp.status == 400
+    assert resp.content_type == "application/json"
+
+
+async def test_correct_value_to_header_defined_with_str_enum(aiohttp_client, loop):
+    app = web.Application()
+    app.router.add_view("/coord", ViewWithEnumType)
+
+    client = await aiohttp_client(app)
+    resp = await client.get("/coord", headers={"format": "UMT"})
+    assert await resp.json() == {"format": "UMT"}
+    assert resp.status == 200
+    assert resp.content_type == "application/json"

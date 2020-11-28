@@ -9,14 +9,8 @@ from aiohttp.web_exceptions import HTTPMethodNotAllowed
 from aiohttp.web_response import StreamResponse
 from pydantic import ValidationError
 
-from .injectors import (
-    AbstractInjector,
-    BodyGetter,
-    HeadersGetter,
-    MatchInfoGetter,
-    QueryGetter,
-    _parse_func_signature,
-)
+from .injectors import (AbstractInjector, BodyGetter, HeadersGetter,
+                        MatchInfoGetter, QueryGetter, _parse_func_signature)
 
 
 class PydanticView(AbstractView):
@@ -50,16 +44,25 @@ class PydanticView(AbstractView):
 
     @staticmethod
     def parse_func_signature(func: Callable) -> Iterable[AbstractInjector]:
-        path_args, body_args, qs_args, header_args = _parse_func_signature(func)
+        path_args, body_args, qs_args, header_args, defaults = _parse_func_signature(
+            func
+        )
         injectors = []
+
+        def default_value(args: dict) -> dict:
+            """
+            Returns the default values of args.
+            """
+            return {name: defaults[name] for name in args if name in defaults}
+
         if path_args:
-            injectors.append(MatchInfoGetter(path_args))
+            injectors.append(MatchInfoGetter(path_args, default_value(path_args)))
         if body_args:
-            injectors.append(BodyGetter(body_args))
+            injectors.append(BodyGetter(body_args, default_value(body_args)))
         if qs_args:
-            injectors.append(QueryGetter(qs_args))
+            injectors.append(QueryGetter(qs_args, default_value(qs_args)))
         if header_args:
-            injectors.append(HeadersGetter(header_args))
+            injectors.append(HeadersGetter(header_args, default_value(header_args)))
         return injectors
 
 
@@ -83,7 +86,11 @@ def inject_params(
                 else:
                     injector.inject(self.request, args, kwargs)
             except ValidationError as error:
-                return json_response(text=error.json(), status=400)
+                errors = error.errors()
+                for error in errors:
+                    error["in"] = injector.context
+
+                return json_response(data=errors, status=400)
 
         return await handler(self, *args, **kwargs)
 
