@@ -33,6 +33,9 @@ class PetCollectionView(PydanticView):
     ) -> r200[List[Pet]]:
         """
         Get a list of pets
+
+        Status Codes:
+          200: Successful operation
         """
         return web.json_response()
 
@@ -49,6 +52,19 @@ class PetItemView(PydanticView):
         return web.json_response()
 
     async def delete(self, id: int, /) -> r204:
+        """
+        Status Code:
+          204: Empty but OK
+        """
+        return web.json_response()
+
+
+class TestResponseReturnASimpleType(PydanticView):
+    async def get(self) -> r200[int]:
+        """
+        Status Codes:
+          200: The new number
+        """
         return web.json_response()
 
 
@@ -57,6 +73,7 @@ async def generated_oas(aiohttp_client, loop) -> web.Application:
     app = web.Application()
     app.router.add_view("/pets", PetCollectionView)
     app.router.add_view("/pets/{id}", PetItemView)
+    app.router.add_view("/simple-type", TestResponseReturnASimpleType)
     oas.setup(app)
 
     client = await aiohttp_client(app)
@@ -115,29 +132,11 @@ async def test_pets_route_should_have_get_method(generated_oas):
         ],
         "responses": {
             "200": {
+                "description": "Successful operation",
                 "content": {
                     "application/json": {
                         "schema": {
                             "items": {
-                                "definitions": {
-                                    "Color": {
-                                        "description": "An enumeration.",
-                                        "enum": ["red", "green", "pink"],
-                                        "title": "Color",
-                                        "type": "string",
-                                    },
-                                    "Toy": {
-                                        "properties": {
-                                            "color": {
-                                                "$ref": "#/components/schemas/Color"
-                                            },
-                                            "name": {"title": "Name", "type": "string"},
-                                        },
-                                        "required": ["name", "color"],
-                                        "title": "Toy",
-                                        "type": "object",
-                                    },
-                                },
                                 "properties": {
                                     "id": {"title": "Id", "type": "integer"},
                                     "name": {"title": "Name", "type": "string"},
@@ -154,7 +153,7 @@ async def test_pets_route_should_have_get_method(generated_oas):
                             "type": "array",
                         }
                     }
-                }
+                },
             }
         },
     }
@@ -167,23 +166,6 @@ async def test_pets_route_should_have_post_method(generated_oas):
             "content": {
                 "application/json": {
                     "schema": {
-                        "definitions": {
-                            "Color": {
-                                "description": "An enumeration.",
-                                "enum": ["red", "green", "pink"],
-                                "title": "Color",
-                                "type": "string",
-                            },
-                            "Toy": {
-                                "properties": {
-                                    "color": {"$ref": "#/components/schemas/Color"},
-                                    "name": {"title": "Name", "type": "string"},
-                                },
-                                "required": ["name", "color"],
-                                "title": "Toy",
-                                "type": "object",
-                            },
-                        },
                         "properties": {
                             "id": {"title": "Id", "type": "integer"},
                             "name": {"title": "Name", "type": "string"},
@@ -202,26 +184,10 @@ async def test_pets_route_should_have_post_method(generated_oas):
         },
         "responses": {
             "201": {
+                "description": "",
                 "content": {
                     "application/json": {
                         "schema": {
-                            "definitions": {
-                                "Color": {
-                                    "description": "An enumeration.",
-                                    "enum": ["red", "green", "pink"],
-                                    "title": "Color",
-                                    "type": "string",
-                                },
-                                "Toy": {
-                                    "properties": {
-                                        "color": {"$ref": "#/components/schemas/Color"},
-                                        "name": {"title": "Name", "type": "string"},
-                                    },
-                                    "required": ["name", "color"],
-                                    "title": "Toy",
-                                    "type": "object",
-                                },
-                            },
                             "properties": {
                                 "id": {"title": "Id", "type": "integer"},
                                 "name": {"title": "Name", "type": "string"},
@@ -236,7 +202,7 @@ async def test_pets_route_should_have_post_method(generated_oas):
                             "type": "object",
                         }
                     }
-                }
+                },
             }
         },
     }
@@ -248,15 +214,16 @@ async def test_generated_oas_should_have_pets_id_paths(generated_oas):
 
 async def test_pets_id_route_should_have_delete_method(generated_oas):
     assert generated_oas["paths"]["/pets/{id}"]["delete"] == {
+        "description": "",
         "parameters": [
             {
-                "required": True,
                 "in": "path",
                 "name": "id",
+                "required": True,
                 "schema": {"title": "id", "type": "integer"},
             }
         ],
-        "responses": {"204": {"content": {}}},
+        "responses": {"204": {"content": {}, "description": "Empty but OK"}},
     }
 
 
@@ -272,26 +239,10 @@ async def test_pets_id_route_should_have_get_method(generated_oas):
         ],
         "responses": {
             "200": {
+                "description": "",
                 "content": {
                     "application/json": {
                         "schema": {
-                            "definitions": {
-                                "Color": {
-                                    "description": "An enumeration.",
-                                    "enum": ["red", "green", "pink"],
-                                    "title": "Color",
-                                    "type": "string",
-                                },
-                                "Toy": {
-                                    "properties": {
-                                        "color": {"$ref": "#/components/schemas/Color"},
-                                        "name": {"title": "Name", "type": "string"},
-                                    },
-                                    "required": ["name", "color"],
-                                    "title": "Toy",
-                                    "type": "object",
-                                },
-                            },
                             "properties": {
                                 "id": {"title": "Id", "type": "integer"},
                                 "name": {"title": "Name", "type": "string"},
@@ -306,9 +257,9 @@ async def test_pets_id_route_should_have_get_method(generated_oas):
                             "type": "object",
                         }
                     }
-                }
+                },
             },
-            "404": {"content": {}},
+            "404": {"description": "", "content": {}},
         },
     }
 
@@ -327,23 +278,6 @@ async def test_pets_id_route_should_have_put_method(generated_oas):
             "content": {
                 "application/json": {
                     "schema": {
-                        "definitions": {
-                            "Color": {
-                                "description": "An enumeration.",
-                                "enum": ["red", "green", "pink"],
-                                "title": "Color",
-                                "type": "string",
-                            },
-                            "Toy": {
-                                "properties": {
-                                    "color": {"$ref": "#/components/schemas/Color"},
-                                    "name": {"title": "Name", "type": "string"},
-                                },
-                                "required": ["name", "color"],
-                                "title": "Toy",
-                                "type": "object",
-                            },
-                        },
                         "properties": {
                             "id": {"title": "Id", "type": "integer"},
                             "name": {"title": "Name", "type": "string"},
@@ -358,6 +292,18 @@ async def test_pets_id_route_should_have_put_method(generated_oas):
                         "type": "object",
                     }
                 }
+            }
+        },
+    }
+
+
+async def test_simple_type_route_should_have_get_method(generated_oas):
+    assert generated_oas["paths"]["/simple-type"]["get"] == {
+        "description": "",
+        "responses": {
+            "200": {
+                "content": {"application/json": {"schema": {}}},
+                "description": "The new number",
             }
         },
     }
