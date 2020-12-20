@@ -217,6 +217,9 @@ For example *r200[List[Pet]]* means the server responses with
 the status code 200 and the response content is a List of Pet where Pet will be
 defined using a pydantic.BaseModel
 
+The docstring of methods will be parsed to fill the descriptions in the
+Open Api Specification.
+
 
 .. code-block:: python3
 
@@ -235,20 +238,42 @@ defined using a pydantic.BaseModel
 
     class PetCollectionView(PydanticView):
         async def get(self) -> r200[List[Pet]]:
+            """
+            Find all pets
+            """
             pets = self.request.app["model"].list_pets()
             return web.json_response([pet.dict() for pet in pets])
 
         async def post(self, pet: Pet) -> r201[Pet]:
+            """
+            Add a new pet to the store
+
+            Status Codes:
+                201: The pet is created
+            """
             self.request.app["model"].add_pet(pet)
             return web.json_response(pet.dict())
 
 
     class PetItemView(PydanticView):
         async def get(self, id: int, /) -> Union[r200[Pet], r404[Error]]:
+            """
+            Find a pet by ID
+
+            Status Codes:
+                200: Successful operation
+                404: Pet not found
+            """
             pet = self.request.app["model"].find_pet(id)
             return web.json_response(pet.dict())
 
         async def put(self, id: int, /, pet: Pet) -> r200[Pet]:
+            """
+            Update an existing pet
+
+            Status Codes:
+                200: successful operation
+            """
             self.request.app["model"].update_pet(id, pet)
             return web.json_response(pet.dict())
 
@@ -270,11 +295,33 @@ Have a look at `demo`_ for a complete example
 
 Go to http://127.0.0.1:8080/oas
 
-You can generate the OAS in a json file using the command:
+You can generate the OAS in a json or yaml file using the aiohttp_pydantic.oas command:
 
 .. code-block:: bash
 
     python -m aiohttp_pydantic.oas demo.main
+
+.. code-block:: bash
+    $ python3 -m aiohttp_pydantic.oas  --help
+    usage: __main__.py [-h] [-b FILE] [-o FILE] [-f FORMAT] [APP [APP ...]]
+
+    Generate Open API Specification
+
+    positional arguments:
+      APP                   The name of the module containing the asyncio.web.Application. By default the variable named
+                            'app' is loaded but you can define an other variable name ending the name of module with :
+                            characters and the name of variable. Example: my_package.my_module:my_app If your
+                            asyncio.web.Application is returned by a function, you can use the syntax:
+                            my_package.my_module:my_app()
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -b FILE, --base-oas-file FILE
+                            A file that will be used as base to generate OAS
+      -o FILE, --output FILE
+                            File to write the output
+      -f FORMAT, --format FORMAT
+                            The output format, can be 'json' or 'yaml' (default is json)
 
 
 .. _demo: https://github.com/Maillol/aiohttp-pydantic/tree/main/demo

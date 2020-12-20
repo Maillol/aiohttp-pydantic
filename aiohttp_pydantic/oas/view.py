@@ -8,6 +8,7 @@ from aiohttp.web_app import Application
 from pydantic import BaseModel
 
 from aiohttp_pydantic.oas.struct import OpenApiSpec3, OperationObject, PathItem
+from . import docstring_parser
 
 from ..injectors import _parse_func_signature
 from ..utils import is_pydantic_base_model
@@ -18,7 +19,7 @@ from .typing import is_status_code_type
 def _handle_optional(type_):
     """
     Returns the type wrapped in Optional or None.
-
+    >>>  from typing import Optional
     >>>  _handle_optional(int)
     >>>  _handle_optional(Optional[str])
     <class 'str'>
@@ -36,14 +37,15 @@ class _OASResponseBuilder:
     generate the OAS operation response.
     """
 
-    def __init__(self, oas: OpenApiSpec3, oas_operation):
+    def __init__(self, oas: OpenApiSpec3, oas_operation, status_code_descriptions):
         self._oas_operation = oas_operation
         self._oas = oas
+        self._status_code_descriptions = status_code_descriptions
 
     def _handle_pydantic_base_model(self, obj):
         if is_pydantic_base_model(obj):
             response_schema = obj.schema(ref_template="#/components/schemas/{model}")
-            if def_sub_schemas := response_schema.get("definitions", None):
+            if def_sub_schemas := response_schema.pop("definitions", None):
                 self._oas.components.schemas.update(def_sub_schemas)
             return response_schema
         return {}
@@ -64,10 +66,16 @@ class _OASResponseBuilder:
                     "schema": self._handle_list(typing.get_args(obj)[0])
                 }
             }
+            desc = self._status_code_descriptions.get(int(status_code))
+            if desc:
+                self._oas_operation.responses[status_code].description = desc
 
         elif is_status_code_type(obj):
             status_code = obj.__name__[1:]
             self._oas_operation.responses[status_code].content = {}
+            desc = self._status_code_descriptions.get(int(status_code))
+            if desc:
+                self._oas_operation.responses[status_code].description = desc
 
     def _handle_union(self, obj):
         if typing.get_origin(obj) is typing.Union:
@@ -90,13 +98,16 @@ def _add_http_method_to_oas(
     )
     description = getdoc(handler)
     if description:
-        oas_operation.description = description
+        oas_operation.description = docstring_parser.operation(description)
+        status_code_descriptions = docstring_parser.status_code(description)
+    else:
+        status_code_descriptions = {}
 
     if body_args:
         body_schema = next(iter(body_args.values())).schema(
             ref_template="#/components/schemas/{model}"
         )
-        if def_sub_schemas := body_schema.get("definitions", None):
+        if def_sub_schemas := body_schema.pop("definitions", None):
             oas.components.schemas.update(def_sub_schemas)
 
         oas_operation.request_body.content = {
@@ -127,7 +138,9 @@ def _add_http_method_to_oas(
 
     return_type = handler.__annotations__.get("return")
     if return_type is not None:
-        _OASResponseBuilder(oas, oas_operation).build(return_type)
+        _OASResponseBuilder(oas, oas_operation, status_code_descriptions).build(
+            return_type
+        )
 
 
 def generate_oas(apps: List[Application]) -> dict:

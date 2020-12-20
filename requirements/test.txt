@@ -8,6 +8,7 @@ pyparsing==2.4.7
 pytest==6.1.2
 pytest-aiohttp==0.3.0
 pytest-cov==2.10.1
+pyyaml==5.3.1
 six==1.15.0
 toml==0.10.2
 typing-extensions==3.7.4.3

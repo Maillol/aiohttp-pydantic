@@ -133,6 +133,7 @@ class Parameters:
 class Response:
     def __init__(self, spec: dict):
         self._spec = spec
+        self._spec.setdefault("description", "")
 
     @property
     def description(self) -> str:
