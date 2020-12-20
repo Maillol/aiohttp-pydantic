@@ -302,6 +302,7 @@ You can generate the OAS in a json or yaml file using the aiohttp_pydantic.oas c
     python -m aiohttp_pydantic.oas demo.main
 
 .. code-block:: bash
+
     $ python3 -m aiohttp_pydantic.oas  --help
     usage: __main__.py [-h] [-b FILE] [-o FILE] [-f FORMAT] [APP [APP ...]]
 
