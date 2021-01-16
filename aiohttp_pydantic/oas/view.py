@@ -7,7 +7,7 @@ from aiohttp.web import Response, json_response
 from aiohttp.web_app import Application
 from pydantic import BaseModel
 
-from aiohttp_pydantic.oas.struct import OpenApiSpec3, OperationObject, PathItem
+from aiohttp_pydantic.oas.struct import OpenApiSpec3, OperationObject, PathItem, Link
 from . import docstring_parser
 
 from ..injectors import _parse_func_signature
@@ -31,22 +31,71 @@ def _handle_optional(type_):
     return None
 
 
+class LinksBuilder:
+    def __init__(self):
+        self._links = {}
+        self._parameters = {}
+
+    def add_src_parameter(self, link: Link, parameter_type, parameter_path):
+        """
+        parameter_type: must be a typing.NewType.
+        parameter_path: example: "$response.body#/id"
+        """
+        self._links.setdefault(link, []).append((parameter_type, parameter_path))
+
+    def add_destination_parameter(self, parameter_type, operation_id, parameter_name):
+        """
+        parameter_type: must be a typing.NewType.
+        parameter_name: The name of parameter.
+        """
+        self._parameters.setdefault(parameter_type, []).append(
+            {"operation_id": operation_id, "parameter_name": parameter_name}
+        )
+
+    def build_links(self):
+        link: Link
+        for link, type_and_paths in self._links.items():
+            for (parameter_type, parameter_path) in type_and_paths:
+                for parameter in self._parameters[parameter_type]:
+                    link.operation_id = parameter["operation_id"]
+                    link.parameters[parameter["parameter_name"]] = parameter_path
+
+
 class _OASResponseBuilder:
     """
     Parse the type annotated as returned by a function and
     generate the OAS operation response.
     """
 
-    def __init__(self, oas: OpenApiSpec3, oas_operation, status_code_descriptions):
+    def __init__(
+        self,
+        oas: OpenApiSpec3,
+        oas_operation: OperationObject,
+        status_code_descriptions,
+        links_builder,
+    ):
         self._oas_operation = oas_operation
         self._oas = oas
         self._status_code_descriptions = status_code_descriptions
+        self._current_status_code = None
+        self._links_builder: LinksBuilder = links_builder
 
     def _handle_pydantic_base_model(self, obj):
         if is_pydantic_base_model(obj):
             response_schema = obj.schema(ref_template="#/components/schemas/{model}")
             if def_sub_schemas := response_schema.pop("definitions", None):
                 self._oas.components.schemas.update(def_sub_schemas)
+
+            for field_name, field_type in obj.__annotations__.items():
+                if hasattr(field_type, "__supertype__"):
+                    oas_link = self._oas_operation.responses[
+                        self._current_status_code
+                    ].links[
+                        "link_name"
+                    ]  # TODO: Generate a link name.
+                    self._links_builder.add_src_parameter(
+                        oas_link, field_type, f"$response.body#/{field_name}"
+                    )
             return response_schema
         return {}
 
@@ -61,6 +110,7 @@ class _OASResponseBuilder:
     def _handle_status_code_type(self, obj):
         if is_status_code_type(typing.get_origin(obj)):
             status_code = typing.get_origin(obj).__name__[1:]
+            self._current_status_code = status_code
             self._oas_operation.responses[status_code].content = {
                 "application/json": {
                     "schema": self._handle_list(typing.get_args(obj)[0])
@@ -72,6 +122,7 @@ class _OASResponseBuilder:
 
         elif is_status_code_type(obj):
             status_code = obj.__name__[1:]
+            self._current_status_code = status_code
             self._oas_operation.responses[status_code].content = {}
             desc = self._status_code_descriptions.get(int(status_code))
             if desc:
@@ -88,7 +139,11 @@ class _OASResponseBuilder:
 
 
 def _add_http_method_to_oas(
-    oas: OpenApiSpec3, oas_path: PathItem, http_method: str, view: Type[PydanticView]
+    oas: OpenApiSpec3,
+    oas_path: PathItem,
+    http_method: str,
+    view: Type[PydanticView],
+    links_builder: LinksBuilder,
 ):
     http_method = http_method.lower()
     oas_operation: OperationObject = getattr(oas_path, http_method)
@@ -136,11 +191,19 @@ def _add_http_method_to_oas(
 
             oas_operation.parameters[i].required = optional_type is None
 
+            linked_parameter = type_ if optional_type is None else optional_type
+            if hasattr(linked_parameter, "__supertype__"):
+                links_builder.add_destination_parameter(
+                    linked_parameter,
+                    f"{handler.__module__}.{handler.__qualname__}",
+                    name,
+                )
+
     return_type = handler.__annotations__.get("return")
     if return_type is not None:
-        _OASResponseBuilder(oas, oas_operation, status_code_descriptions).build(
-            return_type
-        )
+        _OASResponseBuilder(
+            oas, oas_operation, status_code_descriptions, links_builder
+        ).build(return_type)
 
 
 def generate_oas(apps: List[Application]) -> dict:
@@ -148,6 +211,7 @@ def generate_oas(apps: List[Application]) -> dict:
     Generate and return Open Api Specification from PydanticView in application.
     """
     oas = OpenApiSpec3()
+    links_builder = LinksBuilder()
     for app in apps:
         for resources in app.router.resources():
             for resource_route in resources:
@@ -159,10 +223,14 @@ def generate_oas(apps: List[Application]) -> dict:
                 path = oas.paths[info.get("path", info.get("formatter"))]
                 if resource_route.method == "*":
                     for method_name in view.allowed_methods:
-                        _add_http_method_to_oas(oas, path, method_name, view)
+                        _add_http_method_to_oas(
+                            oas, path, method_name, view, links_builder
+                        )
                 else:
-                    _add_http_method_to_oas(oas, path, resource_route.method, view)
-
+                    _add_http_method_to_oas(
+                        oas, path, resource_route.method, view, links_builder
+                    )
+    links_builder.build_links()
     return oas.spec
 
 

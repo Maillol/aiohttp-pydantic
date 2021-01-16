@@ -130,6 +130,32 @@ class Parameters:
         return Parameter(spec)
 
 
+class Link:
+    def __init__(self, spec: dict):
+        self._spec = spec
+
+    @property
+    def operation_id(self) -> str:
+        return self._spec.get("operation_id")
+
+    @operation_id.setter
+    def operation_id(self, operation_id: str):
+        self._spec["operation_id"] = operation_id
+
+    @property
+    def parameters(self) -> dict:
+        return self._spec.setdefault("parameters", {})
+
+
+class Links:
+    def __init__(self, spec: dict):
+        self._spec = spec.setdefault("links", {})
+
+    def __getitem__(self, link_name: str) -> Link:
+        spec = self._spec.setdefault(link_name, {})
+        return Link(spec)
+
+
 class Response:
     def __init__(self, spec: dict):
         self._spec = spec
@@ -150,6 +176,10 @@ class Response:
     @content.setter
     def content(self, content: dict):
         self._spec["content"] = content
+
+    @property
+    def links(self) -> Links:
+        return Links(self._spec)
 
 
 class Responses:
