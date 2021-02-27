@@ -44,7 +44,9 @@ class _OASResponseBuilder:
 
     def _handle_pydantic_base_model(self, obj):
         if is_pydantic_base_model(obj):
-            response_schema = obj.schema(ref_template="#/components/schemas/{model}")
+            response_schema = obj.schema(
+                ref_template="#/components/schemas/{model}"
+            ).copy()
             if def_sub_schemas := response_schema.pop("definitions", None):
                 self._oas.components.schemas.update(def_sub_schemas)
             return response_schema
@@ -104,8 +106,10 @@ def _add_http_method_to_oas(
         status_code_descriptions = {}
 
     if body_args:
-        body_schema = next(iter(body_args.values())).schema(
-            ref_template="#/components/schemas/{model}"
+        body_schema = (
+            next(iter(body_args.values()))
+            .schema(ref_template="#/components/schemas/{model}")
+            .copy()
         )
         if def_sub_schemas := body_schema.pop("definitions", None):
             oas.components.schemas.update(def_sub_schemas)

@@ -77,10 +77,19 @@ async def generated_oas(aiohttp_client, loop) -> web.Application:
     oas.setup(app)
 
     client = await aiohttp_client(app)
-    response = await client.get("/oas/spec")
-    assert response.status == 200
-    assert response.content_type == "application/json"
-    return await response.json()
+    response_1 = await client.get("/oas/spec")
+    assert response_1.content_type == "application/json"
+    assert response_1.status == 200
+    content_1 = await response_1.json()
+
+    # Reload the page to ensure that content is always the same
+    # note: pydantic can return a cached dict, if a view updates
+    # the dict the output will be incoherent
+    response_2 = await client.get("/oas/spec")
+    content_2 = await response_2.json()
+    assert content_1 == content_2
+
+    return content_2
 
 
 async def test_generated_oas_should_have_components_schemas(generated_oas):
