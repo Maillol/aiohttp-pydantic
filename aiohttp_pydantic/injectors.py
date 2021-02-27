@@ -69,6 +69,10 @@ class BodyGetter(AbstractInjector):
             raise HTTPBadRequest(
                 text='{"error": "Malformed JSON"}', content_type="application/json"
             ) from None
+        if not type(body) == dict:
+            raise HTTPBadRequest(
+                text='{"error": "Malformed JSON"}', content_type="application/json"
+            ) from None
 
         kwargs_view[self.arg_name] = self.model(**body)
 

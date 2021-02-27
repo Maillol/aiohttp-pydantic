@@ -1,5 +1,6 @@
 from typing import Optional
 
+import pytest
 from aiohttp import web
 from pydantic import BaseModel
 
@@ -54,6 +55,20 @@ async def test_post_an_article_with_wrong_type_field_should_return_an_error_mess
             "type": "type_error.integer",
         }
     ]
+
+
+@pytest.mark.parametrize("request_body", [["foo"], "bar", 42])
+async def test_post_json_with_non_object_top_structure_should_return_an_error_message(
+    aiohttp_client, loop, request_body
+):
+    app = web.Application()
+    app.router.add_view("/article", ArticleView)
+
+    client = await aiohttp_client(app)
+    resp = await client.post("/article", json=request_body)
+    assert resp.status == 400
+    assert resp.content_type == "application/json"
+    assert await resp.json() == {"error": "Malformed JSON"}
 
 
 async def test_post_a_valid_article_should_return_the_parsed_type(aiohttp_client, loop):
