@@ -61,11 +61,19 @@ class BodyGetter(AbstractInjector):
 
     def __init__(self, args_spec: dict, default_values: dict):
         self.arg_name, self.model = next(iter(args_spec.items()))
+        self._expect_object = self.model.schema()["type"] == "object"
 
     async def inject(self, request: BaseRequest, args_view: list, kwargs_view: dict):
         try:
             body = await request.json()
         except JSONDecodeError:
+            raise HTTPBadRequest(
+                text='{"error": "Malformed JSON"}', content_type="application/json"
+            ) from None
+
+        # Pydantic tries to cast certain structures, such as a list of 2-tuples,
+        # to a dict. Prevent this by requiring the body to be a dict for object models.
+        if self._expect_object and not isinstance(body, dict):
             raise HTTPBadRequest(
                 text='{"error": "Malformed JSON"}', content_type="application/json"
             ) from None
