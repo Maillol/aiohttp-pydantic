@@ -75,7 +75,9 @@ class BodyGetter(AbstractInjector):
         # to a dict. Prevent this by requiring the body to be a dict for object models.
         if self._expect_object and not isinstance(body, dict):
             raise HTTPBadRequest(
-                text='{"error": "Malformed JSON"}', content_type="application/json"
+                text='[{"in": "body", "loc": ["__root__"], "msg": "value is not a '
+                'valid dict", "type": "type_error.dict"}]',
+                content_type="application/json",
             ) from None
 
         kwargs_view[self.arg_name] = self.model.parse_obj(body)

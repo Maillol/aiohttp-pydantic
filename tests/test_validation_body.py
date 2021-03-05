@@ -88,7 +88,14 @@ async def test_post_an_array_json_to_an_object_model_should_return_an_error(
     resp = await client.post("/article", json=[{"name": "foo", "nb_page": 3}])
     assert resp.status == 400
     assert resp.content_type == "application/json"
-    assert await resp.json() == {"error": "Malformed JSON"}
+    assert await resp.json() == [
+        {
+            "in": "body",
+            "loc": ["__root__"],
+            "msg": "value is not a valid dict",
+            "type": "type_error.dict",
+        }
+    ]
 
 
 async def test_post_an_object_json_to_a_list_model_should_return_an_error(
