@@ -59,7 +59,7 @@ class PetItemView(PydanticView):
         return web.json_response()
 
 
-class TestResponseReturnASimpleType(PydanticView):
+class ViewResponseReturnASimpleType(PydanticView):
     async def get(self) -> r200[int]:
         """
         Status Codes:
@@ -73,7 +73,7 @@ async def generated_oas(aiohttp_client, loop) -> web.Application:
     app = web.Application()
     app.router.add_view("/pets", PetCollectionView)
     app.router.add_view("/pets/{id}", PetItemView)
-    app.router.add_view("/simple-type", TestResponseReturnASimpleType)
+    app.router.add_view("/simple-type", ViewResponseReturnASimpleType)
     oas.setup(app)
 
     client = await aiohttp_client(app)
