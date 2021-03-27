@@ -54,7 +54,7 @@ Example:
             return web.json_response({'name': article.name,
                                       'number_of_page': article.nb_page})
 
-        async def get(self, with_comments: Optional[bool]):
+        async def get(self, with_comments: bool=False):
             return web.json_response({'with_comments': with_comments})
 
 
@@ -101,7 +101,7 @@ API:
 Inject Path Parameters
 ~~~~~~~~~~~~~~~~~~~~~~
 
-To declare a path parameters, you must declare your argument as a `positional-only parameters`_:
+To declare a path parameter, you must declare your argument as a `positional-only parameters`_:
 
 
 Example:
@@ -118,17 +118,32 @@ Example:
 Inject Query String Parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-To declare a query parameters, you must declare your argument as a simple argument:
+To declare a query parameter, you must declare your argument as a simple argument:
 
 
 .. code-block:: python3
 
     class AccountView(PydanticView):
-        async def get(self, customer_id: str):
+        async def get(self, customer_id: Optional[str] = None):
             ...
 
     app = web.Application()
     app.router.add_get('/customers', AccountView)
+
+
+A query string parameter is generally optional and we do not want to force the user to set it in the URL.
+It's recommended to define a default value. It's possible to get a multiple value for the same parameter using
+the List type
+
+.. code-block:: python3
+
+    class AccountView(PydanticView):
+        async def get(self, tags: List[str] = []):
+            ...
+
+    app = web.Application()
+    app.router.add_get('/customers', AccountView)
+
 
 Inject Request Body
 ~~~~~~~~~~~~~~~~~~~
@@ -152,7 +167,7 @@ To declare a body parameter, you must declare your argument as a simple argument
 Inject HTTP headers
 ~~~~~~~~~~~~~~~~~~~
 
-To declare a HTTP headers parameters, you must declare your argument as a `keyword-only argument`_.
+To declare a HTTP headers parameter, you must declare your argument as a `keyword-only argument`_.
 
 
 .. code-block:: python3

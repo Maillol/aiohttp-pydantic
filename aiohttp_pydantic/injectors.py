@@ -1,10 +1,12 @@
 import abc
+import typing
 from inspect import signature
 from json.decoder import JSONDecodeError
 from typing import Callable, Tuple
 
 from aiohttp.web_exceptions import HTTPBadRequest
 from aiohttp.web_request import BaseRequest
+from multidict import MultiDict
 from pydantic import BaseModel
 
 from .utils import is_pydantic_base_model
@@ -94,9 +96,27 @@ class QueryGetter(AbstractInjector):
         attrs = {"__annotations__": args_spec}
         attrs.update(default_values)
         self.model = type("QueryModel", (BaseModel,), attrs)
+        self.args_spec = args_spec
+        self._is_multiple = frozenset(
+            name for name, spec in args_spec.items() if typing.get_origin(spec) is list
+        )
 
     def inject(self, request: BaseRequest, args_view: list, kwargs_view: dict):
-        kwargs_view.update(self.model(**request.query).dict())
+        kwargs_view.update(self.model(**self._query_to_dict(request.query)).dict())
+
+    def _query_to_dict(self, query: MultiDict):
+        """
+        Return a dict with list as value from the MultiDict.
+
+        The value will be wrapped in a list if the args spec is define as a list or if
+        the multiple values are sent (i.e ?foo=1&foo=2)
+        """
+        return {
+            key: values
+            if len(values := query.getall(key)) > 1 or key in self._is_multiple
+            else value
+            for key, value in query.items()
+        }
 
 
 class HeadersGetter(AbstractInjector):
