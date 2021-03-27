@@ -137,8 +137,11 @@ the List type
 
 .. code-block:: python3
 
+    from typing import List
+    from pydantic import Field
+
     class AccountView(PydanticView):
-        async def get(self, tags: List[str] = []):
+        async def get(self, tags: List[str] = Field(default_factory=list)):
             ...
 
     app = web.Application()

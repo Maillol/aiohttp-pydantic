@@ -1,5 +1,5 @@
 from typing import Optional, List
-
+from pydantic import Field
 from aiohttp import web
 
 from aiohttp_pydantic import PydanticView
@@ -11,7 +11,7 @@ class ArticleView(PydanticView):
         with_comments: bool,
         age: Optional[int] = None,
         nb_items: int = 7,
-        tags: List[str] = [],
+        tags: List[str] = Field(default_factory=list)
     ):
         return web.json_response(
             {
