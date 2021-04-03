@@ -5,10 +5,16 @@ from aiohttp_pydantic.oas.struct import OpenApiSpec3
 
 def test_info_title():
     oas = OpenApiSpec3()
-    assert oas.info.title is None
+    assert oas.info.title == "Aiohttp pydantic application"
     oas.info.title = "Info Title"
     assert oas.info.title == "Info Title"
-    assert oas.spec == {"info": {"title": "Info Title"}, "openapi": "3.0.0"}
+    assert oas.spec == {
+        "info": {
+            "title": "Info Title",
+            "version": "1.0.0",
+        },
+        "openapi": "3.0.0",
+    }
 
 
 def test_info_description():
@@ -16,15 +22,22 @@ def test_info_description():
     assert oas.info.description is None
     oas.info.description = "info description"
     assert oas.info.description == "info description"
-    assert oas.spec == {"info": {"description": "info description"}, "openapi": "3.0.0"}
+    assert oas.spec == {
+        "info": {
+            "description": "info description",
+            "title": "Aiohttp pydantic application",
+            "version": "1.0.0",
+        },
+        "openapi": "3.0.0",
+    }
 
 
 def test_info_version():
     oas = OpenApiSpec3()
-    assert oas.info.version is None
+    assert oas.info.version == "1.0.0"
     oas.info.version = "3.14"
     assert oas.info.version == "3.14"
-    assert oas.spec == {"info": {"version": "3.14"}, "openapi": "3.0.0"}
+    assert oas.spec == {"info": {"version": "3.14", "title": "Aiohttp pydantic application"}, "openapi": "3.0.0"}
 
 
 def test_info_terms_of_service():
@@ -33,7 +46,11 @@ def test_info_terms_of_service():
     oas.info.terms_of_service = "http://example.com/terms/"
     assert oas.info.terms_of_service == "http://example.com/terms/"
     assert oas.spec == {
-        "info": {"termsOfService": "http://example.com/terms/"},
+        "info": {
+            "title": "Aiohttp pydantic application",
+            "version": "1.0.0",
+            "termsOfService": "http://example.com/terms/",
+        },
         "openapi": "3.0.0",
     }
 

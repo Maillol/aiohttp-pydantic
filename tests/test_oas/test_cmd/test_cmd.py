@@ -22,8 +22,12 @@ def test_show_oas_of_app(cmd_line):
     args.func(args)
 
     expected = dedent(
-        """
-        {
+    """
+    {
+        "info": {
+            "title": "Aiohttp pydantic application",
+            "version": "1.0.0"
+        },
         "openapi": "3.0.0",
         "paths": {
             "/route-1/{a}": {
@@ -69,8 +73,12 @@ def test_show_oas_of_sub_app(cmd_line):
     args.output = StringIO()
     args.func(args)
     expected = dedent(
-        """
-        {
+    """
+    {
+        "info": {
+            "title": "Aiohttp pydantic application",
+            "version": "1.0.0"
+        },
         "openapi": "3.0.0",
         "paths": {
             "/sub-app/route-2/{b}": {
@@ -110,7 +118,7 @@ def test_show_oas_of_a_callable(cmd_line):
         """
         {
         "info": {
-            "title": "MyApp",
+            "title": "Aiohttp pydantic application",
             "version": "1.0.0"
         },
         "openapi": "3.0.0",
