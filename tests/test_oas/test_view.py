@@ -8,6 +8,7 @@ from pydantic.main import BaseModel
 
 from aiohttp_pydantic import PydanticView, oas
 from aiohttp_pydantic.oas.typing import r200, r201, r204, r404
+from aiohttp_pydantic.oas.view import generate_oas
 
 
 class Color(str, Enum):
@@ -316,3 +317,23 @@ async def test_simple_type_route_should_have_get_method(generated_oas):
             }
         },
     }
+
+async def test_generated_view_info_default():
+    apps = (web.Application(),)
+    spec = generate_oas(apps)
+
+    assert spec == {'info': {'title': 'Aiohttp pydantic application', 'version': '1.0.0'}, 'openapi': '3.0.0'}
+
+
+async def test_generated_view_info_as_version():
+    apps = (web.Application(),)
+    spec = generate_oas(apps, version_spec="test version")
+
+    assert spec == {'info': {'title': 'Aiohttp pydantic application', 'version': 'test version'}, 'openapi': '3.0.0'}
+
+
+async def test_generated_view_info_as_title():
+    apps = (web.Application(),)
+    spec = generate_oas(apps, title_spec="test title")
+
+    assert spec == {'info': {'title': 'test title', 'version': '1.0.0'}, 'openapi': '3.0.0'}
