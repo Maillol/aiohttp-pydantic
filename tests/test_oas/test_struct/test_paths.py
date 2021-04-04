@@ -6,6 +6,7 @@ def test_paths_description():
     oas.paths["/users/{id}"].description = "This route ..."
     assert oas.spec == {
         "openapi": "3.0.0",
+        "info": {"title": "Aiohttp pydantic application", "version": "1.0.0"},
         "paths": {"/users/{id}": {"description": "This route ..."}},
     }
 
@@ -13,7 +14,11 @@ def test_paths_description():
 def test_paths_get():
     oas = OpenApiSpec3()
     oas.paths["/users/{id}"].get
-    assert oas.spec == {"openapi": "3.0.0", "paths": {"/users/{id}": {"get": {}}}}
+    assert oas.spec == {
+        "openapi": "3.0.0",
+        "info": {"title": "Aiohttp pydantic application", "version": "1.0.0"},
+        "paths": {"/users/{id}": {"get": {}}},
+    }
 
 
 def test_paths_operation_description():
@@ -22,6 +27,7 @@ def test_paths_operation_description():
     operation.description = "Long descriptions ..."
     assert oas.spec == {
         "openapi": "3.0.0",
+        "info": {"title": "Aiohttp pydantic application", "version": "1.0.0"},
         "paths": {"/users/{id}": {"get": {"description": "Long descriptions ..."}}},
     }
 
@@ -32,6 +38,7 @@ def test_paths_operation_summary():
     operation.summary = "Updates a pet in the store with form data"
     assert oas.spec == {
         "openapi": "3.0.0",
+        "info": {"title": "Aiohttp pydantic application", "version": "1.0.0"},
         "paths": {
             "/users/{id}": {
                 "get": {"summary": "Updates a pet in the store with form data"}
@@ -51,6 +58,7 @@ def test_paths_operation_parameters():
 
     assert oas.spec == {
         "openapi": "3.0.0",
+        "info": {"title": "Aiohttp pydantic application", "version": "1.0.0"},
         "paths": {
             "/users/{petId}": {
                 "get": {
@@ -86,6 +94,7 @@ def test_paths_operation_requestBody():
     request_body.required = True
     assert oas.spec == {
         "openapi": "3.0.0",
+        "info": {"title": "Aiohttp pydantic application", "version": "1.0.0"},
         "paths": {
             "/users/{petId}": {
                 "get": {

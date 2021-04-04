@@ -1,5 +1,5 @@
 from importlib import resources
-from typing import Iterable
+from typing import Iterable, Optional
 
 import jinja2
 from aiohttp import web
@@ -13,6 +13,8 @@ def setup(
     apps_to_expose: Iterable[web.Application] = (),
     url_prefix: str = "/oas",
     enable: bool = True,
+    version_spec: Optional[str] = None,
+    title_spec: Optional[str] = None,
 ):
     if enable:
         oas_app = web.Application()
@@ -20,6 +22,9 @@ def setup(
         oas_app["index template"] = jinja2.Template(
             resources.read_text("aiohttp_pydantic.oas", "index.j2")
         )
+        oas_app["version_spec"] = version_spec
+        oas_app["title_spec"] = title_spec
+
         oas_app.router.add_get("/spec", get_oas, name="spec")
         oas_app.router.add_static("/static", swagger_ui_path, name="static")
         oas_app.router.add_get("", oas_ui, name="index")

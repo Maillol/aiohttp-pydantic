@@ -1,7 +1,7 @@
 import typing
 from inspect import getdoc
 from itertools import count
-from typing import List, Type
+from typing import List, Type, Optional, Dict
 
 from aiohttp.web import Response, json_response
 from aiohttp.web_app import Application
@@ -147,11 +147,18 @@ def _add_http_method_to_oas(
         )
 
 
-def generate_oas(apps: List[Application]) -> dict:
+def generate_oas(apps: List[Application], version_spec: Optional[str] = None, title_spec: Optional[str] = None) -> dict:
     """
     Generate and return Open Api Specification from PydanticView in application.
     """
     oas = OpenApiSpec3()
+
+    if version_spec is not None:
+        oas.info.version = version_spec
+
+    if title_spec is not None:
+        oas.info.title = title_spec
+
     for app in apps:
         for resources in app.router.resources():
             for resource_route in resources:
@@ -175,7 +182,9 @@ async def get_oas(request):
     View to generate the Open Api Specification from PydanticView in application.
     """
     apps = request.app["apps to expose"]
-    return json_response(generate_oas(apps))
+    version_spec = request.app["version_spec"]
+    title_spec = request.app["title_spec"]
+    return json_response(generate_oas(apps, version_spec, title_spec))
 
 
 async def oas_ui(request):
