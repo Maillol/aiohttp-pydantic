@@ -225,6 +225,16 @@ on the same route, you must use *apps_to_expose* parameter.
 
     oas.setup(app, apps_to_expose=[sub_app_1, sub_app_2])
 
+
+You can change the title or the version of the generated open api specification using
+*title_spec* and *version_spec* parameters:
+
+
+.. code-block:: python3
+
+    oas.setup(app, title_spec="My application", version_spec="1.2.3")
+
+
 Add annotation to define response content
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
