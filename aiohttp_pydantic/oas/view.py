@@ -177,18 +177,14 @@ def generate_oas(apps: List[Application], version_spec: Optional[str] = None, ti
     return oas.spec
 
 
-def get_oas(version_spec, title_spec):
+async def get_oas(request):
     """
-    Wrapper over get_oas for filling spec info
+    View to generate the Open Api Specification from PydanticView in application.
     """
-    async def get_oas_wrapper(request):
-        """
-        View to generate the Open Api Specification from PydanticView in application.
-        """
-        apps = request.app["apps to expose"]
-        return json_response(generate_oas(apps, version_spec, title_spec))
-
-    return get_oas_wrapper
+    apps = request.app["apps to expose"]
+    version_spec = request.app["version_spec"]
+    title_spec = request.app["title_spec"]
+    return json_response(generate_oas(apps, version_spec, title_spec))
 
 
 async def oas_ui(request):

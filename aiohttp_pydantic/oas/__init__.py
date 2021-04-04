@@ -22,7 +22,10 @@ def setup(
         oas_app["index template"] = jinja2.Template(
             resources.read_text("aiohttp_pydantic.oas", "index.j2")
         )
-        oas_app.router.add_get("/spec", get_oas(version_spec, title_spec), name="spec")
+        oas_app["version_spec"] = version_spec
+        oas_app["title_spec"] = title_spec
+
+        oas_app.router.add_get("/spec", get_oas, name="spec")
         oas_app.router.add_static("/static", swagger_ui_path, name="static")
         oas_app.router.add_get("", oas_ui, name="index")
 
