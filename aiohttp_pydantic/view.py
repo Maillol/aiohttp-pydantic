@@ -24,28 +24,42 @@ class PydanticView(AbstractView):
     An AIOHTTP View that validate request using function annotations.
     """
 
+    # Allowed HTTP methods; overridden when subclassed.
+    allowed_methods: set = {}
+
     async def _iter(self) -> StreamResponse:
-        method = getattr(self, self.request.method.lower(), None)
-        resp = await method()
-        return resp
+        if (method_name := self.request.method) not in self.allowed_methods:
+            self._raise_allowed_methods()
+        return await getattr(self, method_name.lower())()
 
     def __await__(self) -> Generator[Any, None, StreamResponse]:
         return self._iter().__await__()
 
-    def __init_subclass__(cls, **kwargs):
+    def __init_subclass__(cls, **kwargs) -> None:
+        """Define allowed methods and decorate handlers.
+
+        Handlers are decorated if and only if they meet the following conditions:
+            - the handler corresponds to an allowed method;
+            - the handler method was not inherited from a :class:`PydanticView` base
+              class. This prevents that methods are decorated multiple times.
+        """
         cls.allowed_methods = {
             meth_name for meth_name in METH_ALL if hasattr(cls, meth_name.lower())
         }
 
         for meth_name in METH_ALL:
-            if meth_name not in cls.allowed_methods:
-                setattr(cls, meth_name.lower(), cls.raise_not_allowed)
-            else:
+            if meth_name in cls.allowed_methods:
                 handler = getattr(cls, meth_name.lower())
-                decorated_handler = inject_params(handler, cls.parse_func_signature)
-                setattr(cls, meth_name.lower(), decorated_handler)
+                for base_class in cls.__bases__:
+                    if is_pydantic_view(base_class):
+                        parent_handler = getattr(base_class, meth_name.lower(), None)
+                        if handler == parent_handler:
+                            break
+                else:
+                    decorated_handler = inject_params(handler, cls.parse_func_signature)
+                    setattr(cls, meth_name.lower(), decorated_handler)
 
-    async def raise_not_allowed(self):
+    def _raise_allowed_methods(self) -> None:
         raise HTTPMethodNotAllowed(self.request.method, self.allowed_methods)
 
     @staticmethod
