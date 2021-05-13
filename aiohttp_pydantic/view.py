@@ -1,6 +1,6 @@
 from functools import update_wrapper
 from inspect import iscoroutinefunction
-from typing import Any, Callable, Generator, Iterable
+from typing import Any, Callable, Generator, Iterable, Set
 
 from aiohttp.abc import AbstractView
 from aiohttp.hdrs import METH_ALL
@@ -25,7 +25,7 @@ class PydanticView(AbstractView):
     """
 
     # Allowed HTTP methods; overridden when subclassed.
-    allowed_methods: set = {}
+    allowed_methods: Set[str] = {}
 
     async def _iter(self) -> StreamResponse:
         if (method_name := self.request.method) not in self.allowed_methods:
