@@ -1,6 +1,7 @@
 from functools import update_wrapper
 from inspect import iscoroutinefunction
-from typing import Any, Callable, Generator, Iterable, Set
+from typing import Any, Callable, Generator, Iterable, Set, ClassVar
+import warnings
 
 from aiohttp.abc import AbstractView
 from aiohttp.hdrs import METH_ALL
@@ -25,7 +26,7 @@ class PydanticView(AbstractView):
     """
 
     # Allowed HTTP methods; overridden when subclassed.
-    allowed_methods: Set[str] = {}
+    allowed_methods: ClassVar[Set[str]] = {}
 
     async def _iter(self) -> StreamResponse:
         if (method_name := self.request.method) not in self.allowed_methods:
@@ -38,29 +39,29 @@ class PydanticView(AbstractView):
     def __init_subclass__(cls, **kwargs) -> None:
         """Define allowed methods and decorate handlers.
 
-        Handlers are decorated if and only if they meet the following conditions:
-            - the handler corresponds to an allowed method;
-            - the handler method was not inherited from a :class:`PydanticView` base
-              class. This prevents that methods are decorated multiple times.
+        Handlers are decorated if and only if they directly bound on the PydanticView class or
+        PydanticView subclass. This prevents that methods are decorated multiple times and that method
+        defined in aiohttp.View parent class is decorated.
         """
+
         cls.allowed_methods = {
             meth_name for meth_name in METH_ALL if hasattr(cls, meth_name.lower())
         }
 
         for meth_name in METH_ALL:
-            if meth_name in cls.allowed_methods:
+            if meth_name.lower() in vars(cls):
                 handler = getattr(cls, meth_name.lower())
-                for base_class in cls.__bases__:
-                    if is_pydantic_view(base_class):
-                        parent_handler = getattr(base_class, meth_name.lower(), None)
-                        if handler == parent_handler:
-                            break
-                else:
-                    decorated_handler = inject_params(handler, cls.parse_func_signature)
-                    setattr(cls, meth_name.lower(), decorated_handler)
+                decorated_handler = inject_params(handler, cls.parse_func_signature)
+                setattr(cls, meth_name.lower(), decorated_handler)
 
     def _raise_allowed_methods(self) -> None:
         raise HTTPMethodNotAllowed(self.request.method, self.allowed_methods)
+
+    def raise_not_allowed(self) -> None:
+        warnings.warn(
+            "PydanticView.raise_not_allowed is deprecated and renamed _raise_allowed_methods",
+            DeprecationWarning, stacklevel=2)
+        self._raise_allowed_methods()
 
     @staticmethod
     def parse_func_signature(func: Callable) -> Iterable[AbstractInjector]:
