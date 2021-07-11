@@ -147,7 +147,11 @@ def _add_http_method_to_oas(
         )
 
 
-def generate_oas(apps: List[Application], version_spec: Optional[str] = None, title_spec: Optional[str] = None) -> dict:
+def generate_oas(
+    apps: List[Application],
+    version_spec: Optional[str] = None,
+    title_spec: Optional[str] = None,
+) -> dict:
     """
     Generate and return Open Api Specification from PydanticView in application.
     """

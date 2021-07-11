@@ -37,7 +37,10 @@ def test_info_version():
     assert oas.info.version == "1.0.0"
     oas.info.version = "3.14"
     assert oas.info.version == "3.14"
-    assert oas.spec == {"info": {"version": "3.14", "title": "Aiohttp pydantic application"}, "openapi": "3.0.0"}
+    assert oas.spec == {
+        "info": {"version": "3.14", "title": "Aiohttp pydantic application"},
+        "openapi": "3.0.0",
+    }
 
 
 def test_info_terms_of_service():
