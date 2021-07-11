@@ -22,7 +22,7 @@ def test_show_oas_of_app(cmd_line):
     args.func(args)
 
     expected = dedent(
-    """
+        """
     {
         "info": {
             "title": "Aiohttp pydantic application",
@@ -73,7 +73,7 @@ def test_show_oas_of_sub_app(cmd_line):
     args.output = StringIO()
     args.func(args)
     expected = dedent(
-    """
+        """
     {
         "info": {
             "title": "Aiohttp pydantic application",

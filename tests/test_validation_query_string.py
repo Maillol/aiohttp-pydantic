@@ -11,7 +11,7 @@ class ArticleView(PydanticView):
         with_comments: bool,
         age: Optional[int] = None,
         nb_items: int = 7,
-        tags: List[str] = Field(default_factory=list)
+        tags: List[str] = Field(default_factory=list),
     ):
         return web.json_response(
             {

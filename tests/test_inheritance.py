@@ -28,7 +28,6 @@ class PydanticViewParent(PydanticView):
 
 
 def test_allowed_methods_get_decorated_exactly_once():
-
     class ChildView(PydanticViewParent):
         async def post(self, id: int, /):
             pass
@@ -44,7 +43,6 @@ def test_allowed_methods_get_decorated_exactly_once():
 
 
 def test_methods_inherited_from_aiohttp_view_should_not_be_decorated():
-
     class ChildView(AiohttpViewParent, PydanticView):
         async def post(self, id: int, /):
             pass
@@ -54,7 +52,6 @@ def test_methods_inherited_from_aiohttp_view_should_not_be_decorated():
 
 
 def test_allowed_methods_are_set_correctly():
-
     class ChildView(AiohttpViewParent, PydanticView):
         async def post(self, id: int, /):
             pass

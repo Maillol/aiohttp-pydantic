@@ -60,7 +60,9 @@ class PydanticView(AbstractView):
     def raise_not_allowed(self) -> None:
         warnings.warn(
             "PydanticView.raise_not_allowed is deprecated and renamed _raise_allowed_methods",
-            DeprecationWarning, stacklevel=2)
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self._raise_allowed_methods()
 
     @staticmethod

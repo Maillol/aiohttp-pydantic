@@ -305,7 +305,10 @@ class Components:
 
 class OpenApiSpec3:
     def __init__(self):
-        self._spec = {"openapi": "3.0.0", "info": {"version": "1.0.0", "title": "Aiohttp pydantic application"}}
+        self._spec = {
+            "openapi": "3.0.0",
+            "info": {"version": "1.0.0", "title": "Aiohttp pydantic application"},
+        }
 
     @property
     def info(self) -> Info:
