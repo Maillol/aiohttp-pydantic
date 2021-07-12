@@ -1,8 +1,9 @@
 Aiohttp pydantic - Aiohttp View to validate and parse request
 =============================================================
 
-.. image:: https://travis-ci.org/Maillol/aiohttp-pydantic.svg?branch=main
-  :target: https://travis-ci.org/Maillol/aiohttp-pydantic
+.. image:: https://cloud.drone.io/api/badges/Maillol/aiohttp-pydantic/status.svg
+  :target: https://cloud.drone.io/Maillol/aiohttp-pydantic
+  :alt: Build status for master branch
 
 .. image:: https://img.shields.io/pypi/v/aiohttp-pydantic
   :target: https://img.shields.io/pypi/v/aiohttp-pydantic
