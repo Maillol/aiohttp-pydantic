@@ -39,7 +39,7 @@ local BuildAndTestPipeline(name, image) = {
     }
   ],
   trigger: {
-    event: ["push", "tag"]
+    event: ["pull_request", "push", "tag"]
   }
 };
 
@@ -55,17 +55,22 @@ local BuildAndTestPipeline(name, image) = {
       name: "Deploy on Pypi",
       steps: [
         {
-          name: "Deploy on Pypi",
-          image: "plugins/pypi",
-          settings: {
-            username: {
+          name: "Install twine and deploy",
+          image: "python3.8",
+          environment: {
+            pypi_username: {
               from_secret: 'pypi_username'
             },
-            password: {
+            pypi_password: {
               from_secret: 'pypi_password'
             }
           },
-          distributions: 'bdist_wheel'
+          commands: [
+            "pip install --force-reinstall twine wheel",
+            "python setup.py build bdist_wheel",
+            "set +x",
+            "twine upload --non-interactive -u \"$pypi_username\" -p \"$pypi_password\" dist/*"
+          ]
         },
       ],
       trigger: {
