@@ -31,6 +31,7 @@ steps:
 
 trigger:
   event:
+  - pull_request
   - push
   - tag
 
@@ -67,6 +68,7 @@ steps:
 
 trigger:
   event:
+  - pull_request
   - push
   - tag
 
@@ -80,12 +82,17 @@ platform:
   arch: amd64
 
 steps:
-- name: Deploy on Pypi
-  image: plugins/pypi
-  settings:
-    password:
+- name: Install twine and deploy
+  image: python3.8
+  commands:
+  - pip install --force-reinstall twine wheel
+  - python setup.py build bdist_wheel
+  - set +x
+  - twine upload --non-interactive -u "$pypi_username" -p "$pypi_password" dist/*
+  environment:
+    pypi_password:
       from_secret: pypi_password
-    username:
+    pypi_username:
       from_secret: pypi_username
 
 trigger:
@@ -95,5 +102,9 @@ trigger:
 depends_on:
 - python-3-8
 - python-3-9
+
+---
+kind: signature
+hmac: dfd0429e3b9f364147c56a400cf37466d0cbf0966e613f11b726777553fd9931
 
 ...
