@@ -1,6 +1,6 @@
 from functools import update_wrapper
 from inspect import iscoroutinefunction
-from typing import Any, Callable, Generator, Iterable, Set, ClassVar
+from typing import Any, Callable, Generator, Iterable, Set, ClassVar, Literal
 import warnings
 
 from aiohttp.abc import AbstractView
@@ -17,6 +17,7 @@ from .injectors import (
     MatchInfoGetter,
     QueryGetter,
     _parse_func_signature,
+    CONTEXT,
 )
 
 
@@ -88,6 +89,22 @@ class PydanticView(AbstractView):
             injectors.append(HeadersGetter(header_args, default_value(header_args)))
         return injectors
 
+    async def on_validation_error(
+        self, exception: ValidationError, context: CONTEXT
+    ) -> StreamResponse:
+        """
+        This method is a hook to intercept ValidationError.
+
+        This hook can be redefined to return a custom HTTP response error.
+        The exception is a pydantic.ValidationError and the context is "body",
+        "headers", "path" or "query string"
+        """
+        errors = exception.errors()
+        for error in errors:
+            error["in"] = context
+
+        return json_response(data=errors, status=400)
+
 
 def inject_params(
     handler, parse_func_signature: Callable[[Callable], Iterable[AbstractInjector]]
@@ -109,11 +126,7 @@ def inject_params(
                 else:
                     injector.inject(self.request, args, kwargs)
             except ValidationError as error:
-                errors = error.errors()
-                for error in errors:
-                    error["in"] = injector.context
-
-                return json_response(data=errors, status=400)
+                return await self.on_validation_error(error, injector.context)
 
         return await handler(self, *args, **kwargs)
 
