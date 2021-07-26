@@ -2,7 +2,7 @@ import abc
 import typing
 from inspect import signature
 from json.decoder import JSONDecodeError
-from typing import Callable, Tuple
+from typing import Callable, Tuple, Literal
 
 from aiohttp.web_exceptions import HTTPBadRequest
 from aiohttp.web_request import BaseRequest
@@ -12,6 +12,9 @@ from pydantic import BaseModel
 from .utils import is_pydantic_base_model
 
 
+CONTEXT = Literal["body", "headers", "path", "query string"]
+
+
 class AbstractInjector(metaclass=abc.ABCMeta):
     """
     An injector parse HTTP request and inject params to the view.
@@ -19,7 +22,7 @@ class AbstractInjector(metaclass=abc.ABCMeta):
 
     @property
     @abc.abstractmethod
-    def context(self) -> str:
+    def context(self) -> CONTEXT:
         """
         The name of part of parsed request
         i.e "HTTP header", "URL path", ...

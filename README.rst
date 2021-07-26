@@ -310,6 +310,26 @@ Open Api Specification.
             self.request.app["model"].remove_pet(id)
             return web.Response(status=204)
 
+
+Custom Validation error
+-----------------------
+
+You can redefine the on_validation_error hook in your PydanticView
+
+.. code-block:: python3
+
+    class PetView(PydanticView):
+
+        async def on_validation_error(self,
+                                      exception: ValidationError,
+                                      context: str):
+            errors = exception.errors()
+            for error in errors:
+                error["in"] = context  # context is "body", "headers", "path" or "query string"
+                error["custom"] = "your custom field ..."
+            return json_response(data=errors, status=400)
+
+
 Demo
 ----
 
