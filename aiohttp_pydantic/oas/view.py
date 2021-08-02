@@ -26,7 +26,7 @@ def _handle_optional(type_):
     """
     if typing.get_origin(type_) is typing.Union:
         args = typing.get_args(type_)
-        if len(args) == 2 and type(None) in args:
+        if len(args) >= 2 and type(None) in args:
             return next(iter(set(args) - {type(None)}))
     return None
 
