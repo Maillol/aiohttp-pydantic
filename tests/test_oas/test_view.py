@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Literal
 from uuid import UUID
 
 import pytest
@@ -46,7 +46,7 @@ class PetCollectionView(PydanticView):
 
 
 class PetItemView(PydanticView):
-    async def get(self, id: int, /) -> Union[r200[Pet], r404]:
+    async def get(self, id: int, /, size: Union[int, Literal['x', 'l', 's']], day: Union[int, Literal["now"]] = "now") -> Union[r200[Pet], r404]:
         return web.json_response()
 
     async def put(self, id: int, /, pet: Pet):
@@ -245,7 +245,21 @@ async def test_pets_id_route_should_have_get_method(generated_oas):
                 "name": "id",
                 "required": True,
                 "schema": {"title": "id", "type": "integer"},
-            }
+            },
+            {'in': 'query',
+             'name': 'size',
+             'required': True,
+             'schema': {'anyOf': [{'type': 'integer'},
+                                  {'enum': ['x', 'l', 's'],
+                                   'type': 'string'}],
+                        'title': 'size'}},
+            {'in': 'query',
+             'name': 'day',
+             'required': False,
+             'schema': {'anyOf': [{'type': 'integer'},
+                                  {'enum': ['now'], 'type': 'string'}],
+                        'default': 'now',
+                        'title': 'day'}}
         ],
         "responses": {
             "200": {

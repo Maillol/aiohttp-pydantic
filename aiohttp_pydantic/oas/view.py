@@ -16,21 +16,6 @@ from ..view import PydanticView, is_pydantic_view
 from .typing import is_status_code_type
 
 
-def _handle_optional(type_):
-    """
-    Returns the type wrapped in Optional or None.
-    >>>  from typing import Optional
-    >>>  _handle_optional(int)
-    >>>  _handle_optional(Optional[str])
-    <class 'str'>
-    """
-    if typing.get_origin(type_) is typing.Union:
-        args = typing.get_args(type_)
-        if len(args) >= 2 and type(None) in args:
-            return next(iter(set(args) - {type(None)}))
-    return None
-
-
 class _OASResponseBuilder:
     """
     Parse the type annotated as returned by a function and
@@ -128,17 +113,17 @@ def _add_http_method_to_oas(
             i = next(indexes)
             oas_operation.parameters[i].in_ = args_location
             oas_operation.parameters[i].name = name
-            optional_type = _handle_optional(type_)
 
             attrs = {"__annotations__": {"__root__": type_}}
             if name in defaults:
                 attrs["__root__"] = defaults[name]
+                oas_operation.parameters[i].required = False
+            else:
+                oas_operation.parameters[i].required = True
 
             oas_operation.parameters[i].schema = type(name, (BaseModel,), attrs).schema(
                 ref_template="#/components/schemas/{model}"
             )
-
-            oas_operation.parameters[i].required = optional_type is None
 
     return_type = handler.__annotations__.get("return")
     if return_type is not None:
