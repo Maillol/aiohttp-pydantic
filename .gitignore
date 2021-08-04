@@ -7,3 +7,5 @@ aiohttp_pydantic.egg-info/
 build/
 coverage.xml
 dist/
+dist_venv/
+venv/
