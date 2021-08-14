@@ -17,16 +17,9 @@ local BuildAndTestPipeline(name, image) = {
       name: "Install package and test",
       image: image,
       commands: [
-        "echo Install package",
-        "pip install -U setuptools wheel pip; pip install .",
-        "echo Test to import module of package",
-        "python -c \"import importlib, setuptools; [print(importlib.import_module(package).__name__, '[OK]') for package in setuptools.find_packages() if package.startswith('aiohttp_pydantic.') or package == 'aiohttp_pydantic']\"",
-        "echo Install CI dependencies",
-        "pip install -r requirements/ci.txt",
-        "echo Launch unittest",
-        "pytest --cov-report=xml --cov=aiohttp_pydantic tests/",
-        "echo Check the README.rst render",
-        "python -m readme_renderer -o /dev/null README.rst"
+        "test \"$(md5sum tasks.py)\" = \"18f864b3ac76119938e3317e49b4ffa1  tasks.py\"",
+        "pip install -U setuptools wheel pip; pip install invoke",
+        "invoke prepare-upload"
       ]
     },
     {
@@ -56,7 +49,7 @@ local BuildAndTestPipeline(name, image) = {
       steps: [
         {
           name: "Install twine and deploy",
-          image: "python3.8",
+          image: "python:3.8",
           environment: {
             pypi_username: {
               from_secret: 'pypi_username'
@@ -66,10 +59,9 @@ local BuildAndTestPipeline(name, image) = {
             }
           },
           commands: [
-            "pip install --force-reinstall twine wheel",
-            "python setup.py build bdist_wheel",
-            "set +x",
-            "twine upload --non-interactive -u \"$pypi_username\" -p \"$pypi_password\" dist/*"
+            "test \"$(md5sum tasks.py)\" = \"18f864b3ac76119938e3317e49b4ffa1  tasks.py\"",
+            "pip install -U setuptools wheel pip; pip install invoke",
+            "invoke upload --pypi-user \"$pypi_username\" --pypi-password \"$pypi_password\""
           ]
         },
       ],

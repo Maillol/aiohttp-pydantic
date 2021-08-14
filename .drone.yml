@@ -11,16 +11,9 @@ steps:
 - name: Install package and test
   image: python:3.8
   commands:
-  - echo Install package
-  - pip install -U setuptools wheel pip; pip install .
-  - echo Test to import module of package
-  - python -c "import importlib, setuptools; [print(importlib.import_module(package).__name__, '[OK]') for package in setuptools.find_packages() if package.startswith('aiohttp_pydantic.') or package == 'aiohttp_pydantic']"
-  - echo Install CI dependencies
-  - pip install -r requirements/ci.txt
-  - echo Launch unittest
-  - pytest --cov-report=xml --cov=aiohttp_pydantic tests/
-  - echo Check the README.rst render
-  - python -m readme_renderer -o /dev/null README.rst
+  - test "$(md5sum tasks.py)" = "18f864b3ac76119938e3317e49b4ffa1  tasks.py"
+  - pip install -U setuptools wheel pip; pip install invoke
+  - invoke prepare-upload
 
 - name: coverage
   image: plugins/codecov
@@ -48,16 +41,9 @@ steps:
 - name: Install package and test
   image: python:3.9
   commands:
-  - echo Install package
-  - pip install -U setuptools wheel pip; pip install .
-  - echo Test to import module of package
-  - python -c "import importlib, setuptools; [print(importlib.import_module(package).__name__, '[OK]') for package in setuptools.find_packages() if package.startswith('aiohttp_pydantic.') or package == 'aiohttp_pydantic']"
-  - echo Install CI dependencies
-  - pip install -r requirements/ci.txt
-  - echo Launch unittest
-  - pytest --cov-report=xml --cov=aiohttp_pydantic tests/
-  - echo Check the README.rst render
-  - python -m readme_renderer -o /dev/null README.rst
+  - test "$(md5sum tasks.py)" = "18f864b3ac76119938e3317e49b4ffa1  tasks.py"
+  - pip install -U setuptools wheel pip; pip install invoke
+  - invoke prepare-upload
 
 - name: coverage
   image: plugins/codecov
@@ -83,12 +69,11 @@ platform:
 
 steps:
 - name: Install twine and deploy
-  image: python3.8
+  image: python:3.8
   commands:
-  - pip install --force-reinstall twine wheel
-  - python setup.py build bdist_wheel
-  - set +x
-  - twine upload --non-interactive -u "$pypi_username" -p "$pypi_password" dist/*
+  - test "$(md5sum tasks.py)" = "18f864b3ac76119938e3317e49b4ffa1  tasks.py"
+  - pip install -U setuptools wheel pip; pip install invoke
+  - invoke upload --pypi-user "$pypi_username" --pypi-password "$pypi_password"
   environment:
     pypi_password:
       from_secret: pypi_password
@@ -105,6 +90,6 @@ depends_on:
 
 ---
 kind: signature
-hmac: dfd0429e3b9f364147c56a400cf37466d0cbf0966e613f11b726777553fd9931
+hmac: 9a24ccae6182723af71257495d7843fd40874006c5e867cdebf363f497ddb839
 
 ...
