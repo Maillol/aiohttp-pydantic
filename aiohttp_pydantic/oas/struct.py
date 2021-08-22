@@ -2,7 +2,7 @@
 Utility to write Open Api Specifications using the Python language.
 """
 
-from typing import Union
+from typing import Union, List
 
 
 class Info:
@@ -157,7 +157,7 @@ class Responses:
         self._spec = spec.setdefault("responses", {})
 
     def __getitem__(self, status_code: Union[int, str]) -> Response:
-        if not (100 <= int(status_code) < 600):
+        if not 100 <= int(status_code) < 600:
             raise ValueError("status_code must be between 100 and 599")
 
         spec = self._spec.setdefault(str(status_code), {})
@@ -195,6 +195,17 @@ class OperationObject:
     @property
     def responses(self) -> Responses:
         return Responses(self._spec)
+
+    @property
+    def tags(self) -> List[str]:
+        return self._spec.get("tags", [])[:]
+
+    @tags.setter
+    def tags(self, tags: List[str]):
+        if tags:
+            self._spec["tags"] = tags[:]
+        else:
+            self._spec.pop("tags", None)
 
 
 class PathItem:

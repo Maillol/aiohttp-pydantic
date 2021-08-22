@@ -1,6 +1,6 @@
 from functools import update_wrapper
 from inspect import iscoroutinefunction
-from typing import Any, Callable, Generator, Iterable, Set, ClassVar, Literal
+from typing import Any, Callable, Generator, Iterable, Set, ClassVar
 import warnings
 
 from aiohttp.abc import AbstractView

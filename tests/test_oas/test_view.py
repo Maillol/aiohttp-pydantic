@@ -35,6 +35,7 @@ class PetCollectionView(PydanticView):
         """
         Get a list of pets
 
+        Tags: pet
         Status Codes:
           200: Successful operation
         """
@@ -46,7 +47,13 @@ class PetCollectionView(PydanticView):
 
 
 class PetItemView(PydanticView):
-    async def get(self, id: int, /, size: Union[int, Literal['x', 'l', 's']], day: Union[int, Literal["now"]] = "now") -> Union[r200[Pet], r404]:
+    async def get(
+        self,
+        id: int,
+        /,
+        size: Union[int, Literal["x", "l", "s"]],
+        day: Union[int, Literal["now"]] = "now",
+    ) -> Union[r200[Pet], r404]:
         return web.json_response()
 
     async def put(self, id: int, /, pet: Pet):
@@ -120,6 +127,7 @@ async def test_generated_oas_should_have_pets_paths(generated_oas):
 async def test_pets_route_should_have_get_method(generated_oas):
     assert generated_oas["paths"]["/pets"]["get"] == {
         "description": "Get a list of pets",
+        "tags": ["pet"],
         "parameters": [
             {
                 "in": "query",
@@ -246,20 +254,28 @@ async def test_pets_id_route_should_have_get_method(generated_oas):
                 "required": True,
                 "schema": {"title": "id", "type": "integer"},
             },
-            {'in': 'query',
-             'name': 'size',
-             'required': True,
-             'schema': {'anyOf': [{'type': 'integer'},
-                                  {'enum': ['x', 'l', 's'],
-                                   'type': 'string'}],
-                        'title': 'size'}},
-            {'in': 'query',
-             'name': 'day',
-             'required': False,
-             'schema': {'anyOf': [{'type': 'integer'},
-                                  {'enum': ['now'], 'type': 'string'}],
-                        'default': 'now',
-                        'title': 'day'}}
+            {
+                "in": "query",
+                "name": "size",
+                "required": True,
+                "schema": {
+                    "anyOf": [
+                        {"type": "integer"},
+                        {"enum": ["x", "l", "s"], "type": "string"},
+                    ],
+                    "title": "size",
+                },
+            },
+            {
+                "in": "query",
+                "name": "day",
+                "required": False,
+                "schema": {
+                    "anyOf": [{"type": "integer"}, {"enum": ["now"], "type": "string"}],
+                    "default": "now",
+                    "title": "day",
+                },
+            },
         ],
         "responses": {
             "200": {

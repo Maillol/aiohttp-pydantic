@@ -1,5 +1,8 @@
+from textwrap import dedent
+
 from aiohttp_pydantic.oas.docstring_parser import (
     status_code,
+    tags,
     operation,
     _i_extract_block,
     LinesIterator,
@@ -12,6 +15,13 @@ def web_handler():
     """
     bla bla bla
 
+
+    Tags: tag1,  tag2
+      , tag3,
+
+      t   a
+      g
+         4
 
     Status Codes:
         200: line 1
@@ -31,6 +41,19 @@ def web_handler():
              line C 2
 
                line C 3
+
+    bla bla
+    """
+
+
+def web_handler_2():
+    """
+    bla bla bla
+
+
+    Tags: tag1
+    Status Codes:
+        200: line 1
 
     bla bla
     """
@@ -61,28 +84,72 @@ def test_status_code():
     assert status_code(getdoc(web_handler)) == expected
 
 
+def test_tags():
+    expected = ["tag1", "tag2", "tag3", "t a g 4"]
+    assert tags(getdoc(web_handler)) == expected
+
+
 def test_operation():
     expected = "bla bla bla\n\n\nbla bla"
     assert operation(getdoc(web_handler)) == expected
+    assert operation(getdoc(web_handler_2)) == expected
 
 
 def test_i_extract_block():
-    lines = LinesIterator("  aaaa\n\n    bbbb\n\n  cccc\n dddd")
+
+    blocks = dedent(
+        """
+    aaaa:
+
+      bbbb
+    
+      cccc
+    dddd
+    """
+    )
+
+    lines = LinesIterator(blocks)
     text = "\n".join(_i_extract_block(lines))
-    assert text == """aaaa\n\n  bbbb\n\ncccc"""
+    assert text == """aaaa:\n\n  bbbb\n\n  cccc"""
+
+    blocks = dedent(
+        """
+    aaaa:
+
+      bbbb
+
+      cccc
+
+    dddd
+    """
+    )
+
+    lines = LinesIterator(blocks)
+    text = "\n".join(_i_extract_block(lines))
+    assert text == """aaaa:\n\n  bbbb\n\n  cccc\n"""
+
+    blocks = dedent(
+        """
+    aaaa:
+
+      bbbb
+
+      cccc
+    """
+    )
+
+    lines = LinesIterator(blocks)
+    text = "\n".join(_i_extract_block(lines))
+    assert text == """aaaa:\n\n  bbbb\n\n  cccc"""
 
     lines = LinesIterator("")
     text = "\n".join(_i_extract_block(lines))
     assert text == ""
 
-    lines = LinesIterator("aaaa\n   bbbb")  # the indented block is cut by a new block
+    lines = LinesIterator("\n")
     text = "\n".join(_i_extract_block(lines))
     assert text == ""
 
-    lines = LinesIterator("  \n  ")
+    lines = LinesIterator("aaaa:")
     text = "\n".join(_i_extract_block(lines))
-    assert text == ""
-
-    lines = LinesIterator("  aaaa\n  bbbb")
-    text = "\n".join(_i_extract_block(lines))
-    assert text == "aaaa\nbbbb"
+    assert text == "aaaa:"

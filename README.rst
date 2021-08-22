@@ -269,6 +269,8 @@ Open Api Specification.
         async def get(self) -> r200[List[Pet]]:
             """
             Find all pets
+
+            Tags: pet
             """
             pets = self.request.app["model"].list_pets()
             return web.json_response([pet.dict() for pet in pets])
@@ -277,6 +279,7 @@ Open Api Specification.
             """
             Add a new pet to the store
 
+            Tags: pet
             Status Codes:
                 201: The pet is created
             """
@@ -289,6 +292,7 @@ Open Api Specification.
             """
             Find a pet by ID
 
+            Tags: pet
             Status Codes:
                 200: Successful operation
                 404: Pet not found
@@ -300,6 +304,7 @@ Open Api Specification.
             """
             Update an existing pet
 
+            Tags: pet
             Status Codes:
                 200: successful operation
             """
