@@ -4,7 +4,7 @@ Utility to extract extra OAS description from docstring.
 
 import re
 import textwrap
-from typing import Dict
+from typing import Dict, List
 
 
 class LinesIterator:
@@ -47,11 +47,10 @@ def _i_extract_block(lines: LinesIterator):
         except StopIteration:
             return
 
-    # Get the size of the indentation.
-    if (match := re.search("^ +", line)) is None:
-        return  # No block to extract.
-    indent = match.group()
-    yield line[len(indent) :]
+    indent = re.fullmatch("( *).*", line).groups()[0]
+    indentation = len(indent)
+    start_of_other_block = re.compile(f" {{0,{indentation}}}[^ ].*")
+    yield line[indentation:]
 
     # Yield lines until the indentation is the same or is greater than
     # the first block line.
@@ -59,8 +58,8 @@ def _i_extract_block(lines: LinesIterator):
         line = next(lines)
     except StopIteration:
         return
-    while (is_empty := line.strip() == "") or line.startswith(indent):
-        yield "" if is_empty else line[len(indent) :]
+    while not start_of_other_block.fullmatch(line):
+        yield line[indentation:]
         try:
             line = next(lines)
         except StopIteration:
@@ -87,10 +86,13 @@ def status_code(docstring: str) -> Dict[int, str]:
     iterator = LinesIterator(docstring)
     for line in iterator:
         if re.fullmatch("status\\s+codes?\\s*:", line, re.IGNORECASE):
+            iterator.rewind()
             blocks = []
             lines = []
-            for line_of_block in _i_extract_block(iterator):
-                if re.search("^\\d{3}\\s*:", line_of_block):
+            i_block = _i_extract_block(iterator)
+            next(i_block)
+            for line_of_block in i_block:
+                if re.search("^\\s*\\d{3}\\s*:", line_of_block):
                     if lines:
                         blocks.append("\n".join(lines))
                         lines = []
@@ -105,6 +107,19 @@ def status_code(docstring: str) -> Dict[int, str]:
     return {}
 
 
+def tags(docstring: str) -> List[str]:
+    """
+    Extract the "Tags:" block of the docstring.
+    """
+    iterator = LinesIterator(docstring)
+    for line in iterator:
+        if re.fullmatch("tags\\s*:.*", line, re.IGNORECASE):
+            iterator.rewind()
+            lines = " ".join(_i_extract_block(iterator))
+            return [" ".join(e.split()) for e in re.split("[,;]", lines.split(":")[1])]
+    return []
+
+
 def operation(docstring: str) -> str:
     """
     Extract all docstring except the "Status Code:" block.
@@ -112,7 +127,8 @@ def operation(docstring: str) -> str:
     lines = LinesIterator(docstring)
     ret = []
     for line in lines:
-        if re.fullmatch("status\\s+codes?\\s*:", line, re.IGNORECASE):
+        if re.fullmatch("status\\s+codes?\\s*:|tags\\s*:.*", line, re.IGNORECASE):
+            lines.rewind()
             for _ in _i_extract_block(lines):
                 pass
         else:

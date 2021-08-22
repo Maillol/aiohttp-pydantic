@@ -1,7 +1,7 @@
 import typing
 from inspect import getdoc
 from itertools import count
-from typing import List, Type, Optional, Dict
+from typing import List, Type, Optional
 
 from aiohttp.web import Response, json_response
 from aiohttp.web_app import Application
@@ -86,6 +86,7 @@ def _add_http_method_to_oas(
     description = getdoc(handler)
     if description:
         oas_operation.description = docstring_parser.operation(description)
+        oas_operation.tags = docstring_parser.tags(description)
         status_code_descriptions = docstring_parser.status_code(description)
     else:
         status_code_descriptions = {}
