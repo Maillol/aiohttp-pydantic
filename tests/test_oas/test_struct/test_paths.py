@@ -123,18 +123,12 @@ def test_paths_operation_tags():
     oas = OpenApiSpec3()
     operation = oas.paths["/users/{petId}"].get
     assert operation.tags == []
-    operation.tags = ['pets']
+    operation.tags = ["pets"]
 
-    assert oas.spec['paths']['/users/{petId}'] == {
-        'get': {
-            'tags': ['pets']
-        }
-    }
+    assert oas.spec["paths"]["/users/{petId}"] == {"get": {"tags": ["pets"]}}
 
     operation.tags = []
-    assert oas.spec['paths']['/users/{petId}'] == {
-        'get': {}
-    }
+    assert oas.spec["paths"]["/users/{petId}"] == {"get": {}}
 
 
 def test_paths_operation_responses():

@@ -316,6 +316,69 @@ Open Api Specification.
             return web.Response(status=204)
 
 
+Group parameters
+----------------
+
+If your method has lot of parameters you can group them together inside one or several Groups.
+
+
+.. code-block:: python3
+
+    class Pagination(Group):
+        page_num: int = 1
+        page_size: int = 15
+
+
+    class ArticleView(PydanticView):
+
+        async def get(self, page: Pagination):
+            articles = Article.get(page.page_num, page.page_size)
+            ...
+
+
+The parameters page_num and page_size are expected in the query string, and
+set inside a Pagination object passed as page parameter.
+
+The code above is equivalent to:
+
+
+.. code-block:: python3
+
+    class ArticleView(PydanticView):
+
+        async def get(self, page_num: int = 1, page_size: int = 15):
+            articles = Article.get(page_num, page_size)
+            ...
+
+
+You can add methods or properties to your Group.
+
+
+.. code-block:: python3
+
+    class Pagination(Group):
+        page_num: int = 1
+        page_size: int = 15
+
+        @property
+        def num(self):
+            return self.page_num
+
+        @property
+        def size(self):
+            return self.page_size
+
+        def slice(self):
+            return slice(self.num, self.size)
+
+
+    class ArticleView(PydanticView):
+
+        async def get(self, page: Pagination):
+            articles = Article.get(page.num, page.size)
+            ...
+
+
 Custom Validation error
 -----------------------
 
