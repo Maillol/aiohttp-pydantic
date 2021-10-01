@@ -3,6 +3,7 @@ from pydantic import Field
 from aiohttp import web
 
 from aiohttp_pydantic import PydanticView
+from aiohttp_pydantic.injectors import Group
 
 
 class ArticleView(PydanticView):
@@ -19,6 +20,34 @@ class ArticleView(PydanticView):
                 "age": age,
                 "nb_items": nb_items,
                 "tags": tags,
+            }
+        )
+
+
+class Pagination(Group):
+    page_num: int
+    page_size: int = 20
+
+    @property
+    def num(self) -> int:
+        return self.page_num
+
+    @property
+    def size(self) -> int:
+        return self.page_size
+
+
+class ArticleViewWithPaginationGroup(PydanticView):
+    async def get(
+        self,
+        with_comments: bool,
+        page: Pagination,
+    ):
+        return web.json_response(
+            {
+                "with_comments": with_comments,
+                "page_num": page.num,
+                "page_size": page.size,
             }
         )
 
@@ -157,4 +186,70 @@ async def test_get_article_with_one_value_of_tags_must_be_a_list(aiohttp_client,
         "with_comments": True,
     }
     assert resp.status == 200
+    assert resp.content_type == "application/json"
+
+
+async def test_get_article_without_required_field_page(aiohttp_client, loop):
+    app = web.Application()
+    app.router.add_view("/article", ArticleViewWithPaginationGroup)
+
+    client = await aiohttp_client(app)
+
+    resp = await client.get("/article", params={"with_comments": 1})
+    assert await resp.json() == [
+        {
+            "in": "query string",
+            "loc": ["page_num"],
+            "msg": "field required",
+            "type": "value_error.missing",
+        }
+    ]
+    assert resp.status == 400
+    assert resp.content_type == "application/json"
+
+
+async def test_get_article_with_page(aiohttp_client, loop):
+    app = web.Application()
+    app.router.add_view("/article", ArticleViewWithPaginationGroup)
+
+    client = await aiohttp_client(app)
+
+    resp = await client.get("/article", params={"with_comments": 1, "page_num": 2})
+    assert await resp.json() == {"page_num": 2, "page_size": 20, "with_comments": True}
+    assert resp.status == 200
+    assert resp.content_type == "application/json"
+
+
+async def test_get_article_with_page_and_page_size(aiohttp_client, loop):
+    app = web.Application()
+    app.router.add_view("/article", ArticleViewWithPaginationGroup)
+
+    client = await aiohttp_client(app)
+
+    resp = await client.get(
+        "/article", params={"with_comments": 1, "page_num": 1, "page_size": 10}
+    )
+    assert await resp.json() == {"page_num": 1, "page_size": 10, "with_comments": True}
+    assert resp.status == 200
+    assert resp.content_type == "application/json"
+
+
+async def test_get_article_with_page_and_wrong_page_size(aiohttp_client, loop):
+    app = web.Application()
+    app.router.add_view("/article", ArticleViewWithPaginationGroup)
+
+    client = await aiohttp_client(app)
+
+    resp = await client.get(
+        "/article", params={"with_comments": 1, "page_num": 1, "page_size": "large"}
+    )
+    assert await resp.json() == [
+        {
+            "in": "query string",
+            "loc": ["page_size"],
+            "msg": "value is not a valid integer",
+            "type": "type_error.integer",
+        }
+    ]
+    assert resp.status == 400
     assert resp.content_type == "application/json"

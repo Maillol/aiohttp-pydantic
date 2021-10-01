@@ -81,7 +81,7 @@ def _add_http_method_to_oas(
     oas_operation: OperationObject = getattr(oas_path, http_method)
     handler = getattr(view, http_method)
     path_args, body_args, qs_args, header_args, defaults = _parse_func_signature(
-        handler
+        handler, unpack_group=True
     )
     description = getdoc(handler)
     if description:

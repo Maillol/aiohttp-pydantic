@@ -7,6 +7,7 @@ from aiohttp import web
 from pydantic.main import BaseModel
 
 from aiohttp_pydantic import PydanticView, oas
+from aiohttp_pydantic.injectors import Group
 from aiohttp_pydantic.oas.typing import r200, r201, r204, r404
 from aiohttp_pydantic.oas.view import generate_oas
 
@@ -76,6 +77,24 @@ class ViewResponseReturnASimpleType(PydanticView):
         return web.json_response()
 
 
+async def ensure_content_durability(client):
+    """
+    Reload the page 2 times to ensure that content is always the same
+    note: pydantic can return a cached dict, if a view updates the dict the
+    output will be incoherent
+    """
+    response_1 = await client.get("/oas/spec")
+    assert response_1.status == 200
+    assert response_1.content_type == "application/json"
+    content_1 = await response_1.json()
+
+    response_2 = await client.get("/oas/spec")
+    content_2 = await response_2.json()
+    assert content_1 == content_2
+
+    return content_2
+
+
 @pytest.fixture
 async def generated_oas(aiohttp_client, loop) -> web.Application:
     app = web.Application()
@@ -84,20 +103,7 @@ async def generated_oas(aiohttp_client, loop) -> web.Application:
     app.router.add_view("/simple-type", ViewResponseReturnASimpleType)
     oas.setup(app)
 
-    client = await aiohttp_client(app)
-    response_1 = await client.get("/oas/spec")
-    assert response_1.content_type == "application/json"
-    assert response_1.status == 200
-    content_1 = await response_1.json()
-
-    # Reload the page to ensure that content is always the same
-    # note: pydantic can return a cached dict, if a view updates
-    # the dict the output will be incoherent
-    response_2 = await client.get("/oas/spec")
-    content_2 = await response_2.json()
-    assert content_1 == content_2
-
-    return content_2
+    return await ensure_content_durability(await aiohttp_client(app))
 
 
 async def test_generated_oas_should_have_components_schemas(generated_oas):
@@ -377,3 +383,29 @@ async def test_generated_view_info_as_title():
         "info": {"title": "test title", "version": "1.0.0"},
         "openapi": "3.0.0",
     }
+
+
+async def test_use_parameters_group_should_not_impact_the_oas(aiohttp_client):
+    class PetCollectionView1(PydanticView):
+        async def get(self, page: int = 1, page_size: int = 20) -> r200[List[Pet]]:
+            return web.json_response()
+
+    class Pagination(Group):
+        page: int = 1
+        page_size: int = 20
+
+    class PetCollectionView2(PydanticView):
+        async def get(self, pagination: Pagination) -> r200[List[Pet]]:
+            return web.json_response()
+
+    app1 = web.Application()
+    app1.router.add_view("/pets", PetCollectionView1)
+    oas.setup(app1)
+
+    app2 = web.Application()
+    app2.router.add_view("/pets", PetCollectionView2)
+    oas.setup(app2)
+
+    assert await ensure_content_durability(
+        await aiohttp_client(app1)
+    ) == await ensure_content_durability(await aiohttp_client(app2))
