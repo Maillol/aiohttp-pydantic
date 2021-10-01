@@ -324,6 +324,8 @@ If your method has lot of parameters you can group them together inside one or s
 
 .. code-block:: python3
 
+    from aiohttp_pydantic.injectors import Group
+
     class Pagination(Group):
         page_num: int = 1
         page_size: int = 15
