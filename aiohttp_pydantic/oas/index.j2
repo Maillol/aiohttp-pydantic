@@ -4,6 +4,7 @@
   <head>
     <meta charset="UTF-8">
     <title>{{ title | default('Swagger UI') }}</title>
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
     <link rel="stylesheet" type="text/css" href="{{ static_url | trim('/') }}/swagger-ui.css" >
     <link rel="icon" type="image/png" href="{{ static_url | trim('/') }}/favicon-32x32.png" sizes="32x32" />
     <link rel="icon" type="image/png" href="{{ static_url | trim('/') }}/favicon-16x16.png" sizes="16x16" />
