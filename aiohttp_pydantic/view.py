@@ -53,7 +53,10 @@ class PydanticView(AbstractView):
         for meth_name in METH_ALL:
             if meth_name.lower() in vars(cls):
                 handler = getattr(cls, meth_name.lower())
-                decorated_handler = inject_params(handler, cls.parse_func_signature)
+                decorator = inject_params(
+                    parse_func_signature=cls.parse_func_signature, is_function=False
+                )
+                decorated_handler = decorator(handler)
                 setattr(cls, meth_name.lower(), decorated_handler)
 
     def _raise_allowed_methods(self) -> None:
@@ -100,39 +103,73 @@ class PydanticView(AbstractView):
         The exception is a pydantic.ValidationError and the context is "body",
         "headers", "path" or "query string"
         """
-        errors = exception.errors()
-        for error in errors:
-            error["in"] = context
+        return await on_validation_error(exception, context)
 
-        return json_response(data=errors, status=400)
+
+async def on_validation_error(exception: ValidationError, context: CONTEXT):
+    errors = exception.errors()
+    for error in errors:
+        error["in"] = context
+
+    return json_response(data=errors, status=400)
 
 
 def inject_params(
-    handler, parse_func_signature: Callable[[Callable], Iterable[AbstractInjector]]
+    _sentinel=None,
+    *,
+    parse_func_signature: Callable[
+        [Callable], Iterable[AbstractInjector]
+    ] = PydanticView.parse_func_signature,
+    is_function=True,
+    on_validation_error=on_validation_error,
 ):
     """
     Decorator to unpack the query string, route path, body and http header in
     the parameters of the web handler regarding annotations.
     """
 
-    injectors = parse_func_signature(handler)
+    def _inject_params(handler):
+        injectors = parse_func_signature(handler)
 
-    async def wrapped_handler(self):
-        args = []
-        kwargs = {}
-        for injector in injectors:
-            try:
-                if iscoroutinefunction(injector.inject):
-                    await injector.inject(self.request, args, kwargs)
-                else:
-                    injector.inject(self.request, args, kwargs)
-            except ValidationError as error:
-                return await self.on_validation_error(error, injector.context)
+        if is_function:
+            async def wrapped_handler(request):
+                args = []
+                kwargs = {}
+                for injector in injectors:
+                    try:
+                        if iscoroutinefunction(injector.inject):
+                            await injector.inject(request, args, kwargs)
+                        else:
+                            injector.inject(request, args, kwargs)
+                    except ValidationError as error:
+                        return await on_validation_error(error, injector.context)
 
-        return await handler(self, *args, **kwargs)
+                return await handler(request, *args, **kwargs)
 
-    update_wrapper(wrapped_handler, handler)
-    return wrapped_handler
+            wrapped_handler.is_pydantic_handler = True
+
+        else:
+            async def wrapped_handler(self):
+                args = []
+                kwargs = {}
+                for injector in injectors:
+                    try:
+                        if iscoroutinefunction(injector.inject):
+                            await injector.inject(self.request, args, kwargs)
+                        else:
+                            injector.inject(self.request, args, kwargs)
+                    except ValidationError as error:
+                        return await self.on_validation_error(error, injector.context)
+
+                return await handler(self, *args, **kwargs)
+
+        update_wrapper(wrapped_handler, handler)
+        return wrapped_handler
+
+    if callable(_sentinel):
+        return _inject_params(_sentinel)
+
+    return _inject_params
 
 
 def is_pydantic_view(obj) -> bool:
@@ -143,6 +180,13 @@ def is_pydantic_view(obj) -> bool:
         return issubclass(obj, PydanticView)
     except TypeError:
         return False
+
+
+def is_pydantic_handler(obj) -> bool:
+    """
+    Return True if obj is a function decorated with unpack_request.
+    """
+    return getattr(obj, "is_pydantic_handler", False)
 
 
 __all__ = (

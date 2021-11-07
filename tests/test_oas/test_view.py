@@ -6,7 +6,7 @@ import pytest
 from aiohttp import web
 from pydantic.main import BaseModel
 
-from aiohttp_pydantic import PydanticView, oas
+from aiohttp_pydantic import PydanticView, oas, unpack_request
 from aiohttp_pydantic.injectors import Group
 from aiohttp_pydantic.oas.typing import r200, r201, r204, r404
 from aiohttp_pydantic.oas.view import generate_oas
@@ -31,7 +31,7 @@ class Pet(BaseModel):
 
 class PetCollectionView(PydanticView):
     async def get(
-        self, format: str, name: Optional[str] = None, *, promo: Optional[UUID] = None
+            self, format: str, name: Optional[str] = None, *, promo: Optional[UUID] = None
     ) -> r200[List[Pet]]:
         """
         Get a list of pets
@@ -49,11 +49,11 @@ class PetCollectionView(PydanticView):
 
 class PetItemView(PydanticView):
     async def get(
-        self,
-        id: int,
-        /,
-        size: Union[int, Literal["x", "l", "s"]],
-        day: Union[int, Literal["now"]] = "now",
+            self,
+            id: int,
+            /,
+            size: Union[int, Literal["x", "l", "s"]],
+            day: Union[int, Literal["now"]] = "now",
     ) -> Union[r200[Pet], r404]:
         return web.json_response()
 
@@ -77,6 +77,92 @@ class ViewResponseReturnASimpleType(PydanticView):
         return web.json_response()
 
 
+@unpack_request
+async def list_pet(
+        request, format: str, name: Optional[str] = None, *, promo: Optional[UUID] = None
+) -> r200[List[Pet]]:
+    """
+    Get a list of pets
+
+    Tags: pet
+    Status Codes:
+      200: Successful operation
+    """
+    return web.json_response()
+
+
+@unpack_request
+async def create_pet(request, pet: Pet) -> r201[Pet]:
+    """Create a Pet"""
+    return web.json_response()
+
+
+@unpack_request
+async def get_pet(
+        request,
+        id: int,
+        /,
+        size: Union[int, Literal["x", "l", "s"]],
+        day: Union[int, Literal["now"]] = "now",
+) -> Union[r200[Pet], r404]:
+    return web.json_response()
+
+
+@unpack_request
+async def update_pet(request, id: int, /, pet: Pet):
+    return web.json_response()
+
+
+@unpack_request
+async def delete_pet(request, id: int, /) -> r204:
+    """
+    Status Code:
+      204: Empty but OK
+    """
+    return web.json_response()
+
+
+@unpack_request
+async def get_return_a_simple_type(request) -> r200[int]:
+    """
+    Status Codes:
+      200: The new number
+    """
+    return web.json_response()
+
+
+def application_maker_factory(use_view):
+    def make_application():
+        app = web.Application()
+        if use_view:
+            app.router.add_get("/pets", list_pet)
+            app.router.add_post("/pets", create_pet)
+            app.router.add_get("/pets/{id}", get_pet)
+            app.router.add_put("/pets/{id}", update_pet)
+            app.router.add_delete("/pets/{id}", delete_pet)
+            app.router.add_view("/simple-type", ViewResponseReturnASimpleType)
+        else:
+            app.router.add_view("/pets", PetCollectionView)
+            app.router.add_view("/pets/{id}", PetItemView)
+            app.router.add_get("/simple-type", get_return_a_simple_type)
+
+        oas.setup(app)
+        return app
+
+    return make_application
+
+
+@pytest.fixture(
+    params=[
+        application_maker_factory(use_view=True),
+        application_maker_factory(use_view=False),
+    ]
+)
+async def generated_oas(request, aiohttp_client):
+    app = request.param()
+    return await ensure_content_durability(await aiohttp_client(app))
+
+
 async def ensure_content_durability(client):
     """
     Reload the page 2 times to ensure that content is always the same
@@ -93,17 +179,6 @@ async def ensure_content_durability(client):
     assert content_1 == content_2
 
     return content_2
-
-
-@pytest.fixture
-async def generated_oas(aiohttp_client, loop) -> web.Application:
-    app = web.Application()
-    app.router.add_view("/pets", PetCollectionView)
-    app.router.add_view("/pets/{id}", PetItemView)
-    app.router.add_view("/simple-type", ViewResponseReturnASimpleType)
-    oas.setup(app)
-
-    return await ensure_content_durability(await aiohttp_client(app))
 
 
 async def test_generated_oas_should_have_components_schemas(generated_oas):

@@ -1,8 +1,10 @@
 from typing import Optional, List
+
+import pytest
 from pydantic import Field
 from aiohttp import web
 
-from aiohttp_pydantic import PydanticView
+from aiohttp_pydantic import PydanticView, unpack_request
 from aiohttp_pydantic.injectors import Group
 
 
@@ -22,6 +24,24 @@ class ArticleView(PydanticView):
                 "tags": tags,
             }
         )
+
+
+@unpack_request
+async def get_article(
+    request,
+    with_comments: bool,
+    age: Optional[int] = None,
+    nb_items: int = 7,
+    tags: List[str] = Field(default_factory=list),
+):
+    return web.json_response(
+        {
+            "with_comments": with_comments,
+            "age": age,
+            "nb_items": nb_items,
+            "tags": tags,
+        }
+    )
 
 
 class Pagination(Group):
@@ -52,11 +72,52 @@ class ArticleViewWithPaginationGroup(PydanticView):
         )
 
 
-async def test_get_article_without_required_qs_should_return_an_error_message(
-    aiohttp_client, loop
+@unpack_request
+async def get_article_with_pagination_group(
+    request, with_comments: bool, page: Pagination
 ):
-    app = web.Application()
-    app.router.add_view("/article", ArticleView)
+    return web.json_response(
+        {
+            "with_comments": with_comments,
+            "page_num": page.num,
+            "page_size": page.size,
+        }
+    )
+
+
+def application_maker_factory(use_view):
+    def make_application():
+        app = web.Application()
+        if use_view:
+            app.router.add_view("/article", ArticleView)
+            app.router.add_view(
+                "/article_with_pagination_group", ArticleViewWithPaginationGroup
+            )
+        else:
+            app.router.add_get("/article", get_article)
+            app.router.add_view(
+                "/article_with_pagination_group", get_article_with_pagination_group
+            )
+
+        return app
+
+    return make_application
+
+
+@pytest.fixture(
+    params=[
+        application_maker_factory(use_view=True),
+        application_maker_factory(use_view=False),
+    ]
+)
+def make_app(request):
+    return request.param
+
+
+async def test_get_article_without_required_qs_should_return_an_error_message(
+    aiohttp_client, loop, make_app
+):
+    app = make_app()
 
     client = await aiohttp_client(app)
     resp = await client.get("/article")
@@ -73,10 +134,9 @@ async def test_get_article_without_required_qs_should_return_an_error_message(
 
 
 async def test_get_article_with_wrong_qs_type_should_return_an_error_message(
-    aiohttp_client, loop
+    aiohttp_client, loop, make_app
 ):
-    app = web.Application()
-    app.router.add_view("/article", ArticleView)
+    app = make_app()
 
     client = await aiohttp_client(app)
     resp = await client.get("/article", params={"with_comments": "foo"})
@@ -93,10 +153,9 @@ async def test_get_article_with_wrong_qs_type_should_return_an_error_message(
 
 
 async def test_get_article_with_valid_qs_should_return_the_parsed_type(
-    aiohttp_client, loop
+    aiohttp_client, loop, make_app
 ):
-    app = web.Application()
-    app.router.add_view("/article", ArticleView)
+    app = make_app()
 
     client = await aiohttp_client(app)
 
@@ -112,10 +171,9 @@ async def test_get_article_with_valid_qs_should_return_the_parsed_type(
 
 
 async def test_get_article_with_valid_qs_and_omitted_optional_should_return_default_value(
-    aiohttp_client, loop
+    aiohttp_client, loop, make_app
 ):
-    app = web.Application()
-    app.router.add_view("/article", ArticleView)
+    app = make_app()
 
     client = await aiohttp_client(app)
 
@@ -131,10 +189,9 @@ async def test_get_article_with_valid_qs_and_omitted_optional_should_return_defa
 
 
 async def test_get_article_with_multiple_value_for_qs_age_must_failed(
-    aiohttp_client, loop
+    aiohttp_client, loop, make_app
 ):
-    app = web.Application()
-    app.router.add_view("/article", ArticleView)
+    app = make_app()
 
     client = await aiohttp_client(app)
 
@@ -151,9 +208,8 @@ async def test_get_article_with_multiple_value_for_qs_age_must_failed(
     assert resp.content_type == "application/json"
 
 
-async def test_get_article_with_multiple_value_of_tags(aiohttp_client, loop):
-    app = web.Application()
-    app.router.add_view("/article", ArticleView)
+async def test_get_article_with_multiple_value_of_tags(aiohttp_client, loop, make_app):
+    app = make_app()
 
     client = await aiohttp_client(app)
 
@@ -170,9 +226,10 @@ async def test_get_article_with_multiple_value_of_tags(aiohttp_client, loop):
     assert resp.content_type == "application/json"
 
 
-async def test_get_article_with_one_value_of_tags_must_be_a_list(aiohttp_client, loop):
-    app = web.Application()
-    app.router.add_view("/article", ArticleView)
+async def test_get_article_with_one_value_of_tags_must_be_a_list(
+    aiohttp_client, loop, make_app
+):
+    app = make_app()
 
     client = await aiohttp_client(app)
 
@@ -189,13 +246,14 @@ async def test_get_article_with_one_value_of_tags_must_be_a_list(aiohttp_client,
     assert resp.content_type == "application/json"
 
 
-async def test_get_article_without_required_field_page(aiohttp_client, loop):
-    app = web.Application()
-    app.router.add_view("/article", ArticleViewWithPaginationGroup)
+async def test_get_article_without_required_field_page(aiohttp_client, loop, make_app):
+    app = make_app()
 
     client = await aiohttp_client(app)
 
-    resp = await client.get("/article", params={"with_comments": 1})
+    resp = await client.get(
+        "/article_with_pagination_group", params={"with_comments": 1}
+    )
     assert await resp.json() == [
         {
             "in": "query string",
@@ -208,40 +266,42 @@ async def test_get_article_without_required_field_page(aiohttp_client, loop):
     assert resp.content_type == "application/json"
 
 
-async def test_get_article_with_page(aiohttp_client, loop):
-    app = web.Application()
-    app.router.add_view("/article", ArticleViewWithPaginationGroup)
+async def test_get_article_with_page(aiohttp_client, loop, make_app):
+    app = make_app()
 
     client = await aiohttp_client(app)
 
-    resp = await client.get("/article", params={"with_comments": 1, "page_num": 2})
+    resp = await client.get(
+        "/article_with_pagination_group", params={"with_comments": 1, "page_num": 2}
+    )
     assert await resp.json() == {"page_num": 2, "page_size": 20, "with_comments": True}
     assert resp.status == 200
     assert resp.content_type == "application/json"
 
 
-async def test_get_article_with_page_and_page_size(aiohttp_client, loop):
-    app = web.Application()
-    app.router.add_view("/article", ArticleViewWithPaginationGroup)
+async def test_get_article_with_page_and_page_size(aiohttp_client, loop, make_app):
+    app = make_app()
 
     client = await aiohttp_client(app)
 
     resp = await client.get(
-        "/article", params={"with_comments": 1, "page_num": 1, "page_size": 10}
+        "/article_with_pagination_group",
+        params={"with_comments": 1, "page_num": 1, "page_size": 10},
     )
     assert await resp.json() == {"page_num": 1, "page_size": 10, "with_comments": True}
     assert resp.status == 200
     assert resp.content_type == "application/json"
 
 
-async def test_get_article_with_page_and_wrong_page_size(aiohttp_client, loop):
-    app = web.Application()
-    app.router.add_view("/article", ArticleViewWithPaginationGroup)
-
+async def test_get_article_with_page_and_wrong_page_size(
+    aiohttp_client, loop, make_app
+):
+    app = make_app()
     client = await aiohttp_client(app)
 
     resp = await client.get(
-        "/article", params={"with_comments": 1, "page_num": 1, "page_size": "large"}
+        "/article_with_pagination_group",
+        params={"with_comments": 1, "page_num": 1, "page_size": "large"},
     )
     assert await resp.json() == [
         {

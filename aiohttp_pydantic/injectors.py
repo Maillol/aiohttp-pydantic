@@ -98,6 +98,7 @@ class QueryGetter(AbstractInjector):
     context = "query string"
 
     def __init__(self, args_spec: dict, default_values: dict):
+
         args_spec = args_spec.copy()
 
         self._groups = {}
@@ -230,7 +231,7 @@ def _parse_func_signature(
     defaults = {}
 
     for param_name, param_spec in signature(func).parameters.items():
-        if param_name == "self":
+        if param_name in ("self", "request"):  # FIXME retro compatibility !!!
             continue
 
         if param_spec.annotation == param_spec.empty:

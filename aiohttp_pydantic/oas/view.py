@@ -1,7 +1,7 @@
 import typing
 from inspect import getdoc
 from itertools import count
-from typing import List, Type, Optional
+from typing import List, Type, Optional, Callable, Awaitable
 
 from aiohttp.web import Response, json_response
 from aiohttp.web_app import Application
@@ -12,7 +12,7 @@ from . import docstring_parser
 
 from ..injectors import _parse_func_signature
 from ..utils import is_pydantic_base_model
-from ..view import PydanticView, is_pydantic_view
+from ..view import PydanticView, is_pydantic_view, is_pydantic_handler
 from .typing import is_status_code_type
 
 
@@ -75,11 +75,9 @@ class _OASResponseBuilder:
 
 
 def _add_http_method_to_oas(
-    oas: OpenApiSpec3, oas_path: PathItem, http_method: str, view: Type[PydanticView]
+    oas: OpenApiSpec3, oas_path: PathItem, http_method: str, handler: Callable[..., Awaitable[None]]
 ):
-    http_method = http_method.lower()
     oas_operation: OperationObject = getattr(oas_path, http_method)
-    handler = getattr(view, http_method)
     path_args, body_args, qs_args, header_args, defaults = _parse_func_signature(
         handler, unpack_group=True
     )
@@ -152,17 +150,22 @@ def generate_oas(
     for app in apps:
         for resources in app.router.resources():
             for resource_route in resources:
-                if not is_pydantic_view(resource_route.handler):
-                    continue
-
-                view: Type[PydanticView] = resource_route.handler
                 info = resource_route.get_info()
                 path = oas.paths[info.get("path", info.get("formatter"))]
-                if resource_route.method == "*":
-                    for method_name in view.allowed_methods:
-                        _add_http_method_to_oas(oas, path, method_name, view)
-                else:
-                    _add_http_method_to_oas(oas, path, resource_route.method, view)
+                if is_pydantic_view(resource_route.handler):
+                    view: Type[PydanticView] = resource_route.handler
+                    if resource_route.method == "*":
+                        methods = view.allowed_methods
+                    else:
+                        methods = (resource_route.method,)
+
+                    for method_name in methods:
+                        method_name = method_name.lower()
+                        handler = getattr(view, method_name)
+                        _add_http_method_to_oas(oas, path, method_name, handler)
+
+                elif is_pydantic_handler(resource_route.handler):
+                    _add_http_method_to_oas(oas, path, resource_route.method.lower(), resource_route.handler)
 
     return oas.spec
 

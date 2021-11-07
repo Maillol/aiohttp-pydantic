@@ -2,9 +2,10 @@ import json
 from datetime import datetime
 from enum import Enum
 
+import pytest
 from aiohttp import web
 
-from aiohttp_pydantic import PydanticView
+from aiohttp_pydantic import PydanticView, unpack_request
 from aiohttp_pydantic.injectors import Group
 
 
@@ -23,6 +24,13 @@ class ArticleView(PydanticView):
         )
 
 
+@unpack_request
+async def get_article(request, *, signature_expired: datetime):
+    return web.json_response(
+        {"signature": signature_expired}, dumps=JSONEncoder().encode
+    )
+
+
 class FormatEnum(str, Enum):
     UTM = "UMT"
     MGRS = "MGRS"
@@ -31,6 +39,11 @@ class FormatEnum(str, Enum):
 class ViewWithEnumType(PydanticView):
     async def get(self, *, format: FormatEnum):
         return web.json_response({"format": format}, dumps=JSONEncoder().encode)
+
+
+@unpack_request
+async def get_article_with_enum_type(request, *, format: FormatEnum):
+    return web.json_response({"format": format}, dumps=JSONEncoder().encode)
 
 
 class Signature(Group):
@@ -58,11 +71,49 @@ class ArticleViewWithSignatureGroup(PydanticView):
         )
 
 
+@unpack_request
+async def get_article_with_signature_group(request, *, signature: Signature):
+    return web.json_response(
+        {"expired": signature.expired, "scope": signature.scope},
+        dumps=JSONEncoder().encode,
+    )
+
+
+def application_maker_factory(use_view):
+    def make_application():
+        app = web.Application()
+        if use_view:
+            app.router.add_view("/article", ArticleView)
+            app.router.add_view("/coord", ViewWithEnumType)
+            app.router.add_view(
+                "/article_with_signature_group", ArticleViewWithSignatureGroup
+            )
+        else:
+            app.router.add_get("/article", get_article)
+            app.router.add_get("/coord", get_article_with_enum_type)
+            app.router.add_get(
+                "/article_with_signature_group", get_article_with_signature_group
+            )
+
+        return app
+
+    return make_application
+
+
+@pytest.fixture(
+    params=[
+        application_maker_factory(use_view=True),
+        application_maker_factory(use_view=False),
+    ]
+)
+def make_app(request):
+    return request.param
+
+
 async def test_get_article_without_required_header_should_return_an_error_message(
-    aiohttp_client, loop
+    aiohttp_client, loop, make_app
 ):
-    app = web.Application()
-    app.router.add_view("/article", ArticleView)
+    app = make_app()
 
     client = await aiohttp_client(app)
     resp = await client.get("/article", headers={})
@@ -79,10 +130,9 @@ async def test_get_article_without_required_header_should_return_an_error_messag
 
 
 async def test_get_article_with_wrong_header_type_should_return_an_error_message(
-    aiohttp_client, loop
+    aiohttp_client, loop, make_app
 ):
-    app = web.Application()
-    app.router.add_view("/article", ArticleView)
+    app = make_app()
 
     client = await aiohttp_client(app)
     resp = await client.get("/article", headers={"signature_expired": "foo"})
@@ -99,10 +149,9 @@ async def test_get_article_with_wrong_header_type_should_return_an_error_message
 
 
 async def test_get_article_with_valid_header_should_return_the_parsed_type(
-    aiohttp_client, loop
+    aiohttp_client, loop, make_app
 ):
-    app = web.Application()
-    app.router.add_view("/article", ArticleView)
+    app = make_app()
 
     client = await aiohttp_client(app)
     resp = await client.get(
@@ -114,11 +163,9 @@ async def test_get_article_with_valid_header_should_return_the_parsed_type(
 
 
 async def test_get_article_with_valid_header_containing_hyphen_should_be_returned(
-    aiohttp_client, loop
+    aiohttp_client, loop, make_app
 ):
-    app = web.Application()
-    app.router.add_view("/article", ArticleView)
-
+    app = make_app()
     client = await aiohttp_client(app)
     resp = await client.get(
         "/article", headers={"Signature-Expired": "2020-10-04T18:01:00"}
@@ -128,8 +175,10 @@ async def test_get_article_with_valid_header_containing_hyphen_should_be_returne
     assert await resp.json() == {"signature": "2020-10-04T18:01:00"}
 
 
-async def test_wrong_value_to_header_defined_with_str_enum(aiohttp_client, loop):
-    app = web.Application()
+async def test_wrong_value_to_header_defined_with_str_enum(
+    aiohttp_client, loop, make_app
+):
+    app = make_app()
     app.router.add_view("/coord", ViewWithEnumType)
 
     client = await aiohttp_client(app)
@@ -151,8 +200,10 @@ async def test_wrong_value_to_header_defined_with_str_enum(aiohttp_client, loop)
     assert resp.content_type == "application/json"
 
 
-async def test_correct_value_to_header_defined_with_str_enum(aiohttp_client, loop):
-    app = web.Application()
+async def test_correct_value_to_header_defined_with_str_enum(
+    aiohttp_client, loop, make_app
+):
+    app = make_app()
     app.router.add_view("/coord", ViewWithEnumType)
 
     client = await aiohttp_client(app)
@@ -162,13 +213,11 @@ async def test_correct_value_to_header_defined_with_str_enum(aiohttp_client, loo
     assert resp.content_type == "application/json"
 
 
-async def test_with_signature_group(aiohttp_client, loop):
-    app = web.Application()
-    app.router.add_view("/article", ArticleViewWithSignatureGroup)
-
+async def test_with_signature_group(aiohttp_client, loop, make_app):
+    app = make_app()
     client = await aiohttp_client(app)
     resp = await client.get(
-        "/article",
+        "/article_with_signature_group",
         headers={
             "signature_expired": "2020-10-04T18:01:00",
             "signature.scope": "write",

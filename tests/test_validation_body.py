@@ -2,8 +2,8 @@ from typing import Iterator, List, Optional
 
 from aiohttp import web
 from pydantic import BaseModel
-
-from aiohttp_pydantic import PydanticView
+import pytest
+from aiohttp_pydantic import PydanticView, unpack_request
 
 
 class ArticleModel(BaseModel):
@@ -26,12 +26,44 @@ class ArticleView(PydanticView):
         return web.json_response([article.dict() for article in articles])
 
 
-async def test_post_an_article_without_required_field_should_return_an_error_message(
-    aiohttp_client, loop
-):
-    app = web.Application()
-    app.router.add_view("/article", ArticleView)
+@unpack_request
+async def post(request, article: ArticleModel):
+    return web.json_response(article.dict())
 
+
+@unpack_request()
+async def put(request, articles: ArticleModels):
+    return web.json_response([article.dict() for article in articles])
+
+
+def application_maker_factory(use_view):
+    def make_application():
+        app = web.Application()
+        if use_view:
+            app.router.add_view("/article", ArticleView)
+        else:
+            app.router.add_post("/article", post)
+            app.router.add_put("/article", put)
+
+        return app
+
+    return make_application
+
+
+@pytest.fixture(
+    params=[
+        application_maker_factory(use_view=True),
+        application_maker_factory(use_view=True),
+    ]
+)
+def make_app(request):
+    return request.param
+
+
+async def test_post_an_article_without_required_field_should_return_an_error_message(
+    aiohttp_client, loop, make_app
+):
+    app = make_app()
     client = await aiohttp_client(app)
     resp = await client.post("/article", json={})
     assert resp.status == 400
@@ -47,11 +79,9 @@ async def test_post_an_article_without_required_field_should_return_an_error_mes
 
 
 async def test_post_an_article_with_wrong_type_field_should_return_an_error_message(
-    aiohttp_client, loop
+    aiohttp_client, loop, make_app
 ):
-    app = web.Application()
-    app.router.add_view("/article", ArticleView)
-
+    app = make_app()
     client = await aiohttp_client(app)
     resp = await client.post("/article", json={"name": "foo", "nb_page": "foo"})
     assert resp.status == 400
@@ -66,10 +96,8 @@ async def test_post_an_article_with_wrong_type_field_should_return_an_error_mess
     ]
 
 
-async def test_post_an_array_json_is_supported(aiohttp_client, loop):
-    app = web.Application()
-    app.router.add_view("/article", ArticleView)
-
+async def test_post_an_array_json_is_supported(aiohttp_client, loop, make_app):
+    app = make_app()
     client = await aiohttp_client(app)
     body = [{"name": "foo", "nb_page": 3}] * 2
     resp = await client.put("/article", json=body)
@@ -79,11 +107,9 @@ async def test_post_an_array_json_is_supported(aiohttp_client, loop):
 
 
 async def test_post_an_array_json_to_an_object_model_should_return_an_error(
-    aiohttp_client, loop
+    aiohttp_client, loop, make_app
 ):
-    app = web.Application()
-    app.router.add_view("/article", ArticleView)
-
+    app = make_app()
     client = await aiohttp_client(app)
     resp = await client.post("/article", json=[{"name": "foo", "nb_page": 3}])
     assert resp.status == 400
@@ -99,11 +125,9 @@ async def test_post_an_array_json_to_an_object_model_should_return_an_error(
 
 
 async def test_post_an_object_json_to_a_list_model_should_return_an_error(
-    aiohttp_client, loop
+    aiohttp_client, loop, make_app
 ):
-    app = web.Application()
-    app.router.add_view("/article", ArticleView)
-
+    app = make_app()
     client = await aiohttp_client(app)
     resp = await client.put("/article", json={"name": "foo", "nb_page": 3})
     assert resp.status == 400
@@ -118,10 +142,10 @@ async def test_post_an_object_json_to_a_list_model_should_return_an_error(
     ]
 
 
-async def test_post_a_valid_article_should_return_the_parsed_type(aiohttp_client, loop):
-    app = web.Application()
-    app.router.add_view("/article", ArticleView)
-
+async def test_post_a_valid_article_should_return_the_parsed_type(
+    aiohttp_client, loop, make_app
+):
+    app = make_app()
     client = await aiohttp_client(app)
     resp = await client.post("/article", json={"name": "foo", "nb_page": 3})
     assert resp.status == 200

@@ -1,6 +1,7 @@
+import pytest
 from aiohttp import web
 
-from aiohttp_pydantic import PydanticView
+from aiohttp_pydantic import PydanticView, unpack_request
 
 
 class ArticleView(PydanticView):
@@ -8,11 +9,42 @@ class ArticleView(PydanticView):
         return web.json_response({"path": [author_id, tag, date]})
 
 
+@unpack_request
+async def get_article(request, author_id: str, tag: str, date: int, /):
+    return web.json_response({"path": [author_id, tag, date]})
+
+
+def application_maker_factory(use_view):
+    def make_application():
+        app = web.Application()
+        if use_view:
+            app.router.add_view(
+                "/article/{author_id}/tag/{tag}/before/{date}", ArticleView
+            )
+        else:
+            app.router.add_get(
+                "/article/{author_id}/tag/{tag}/before/{date}", get_article
+            )
+
+        return app
+
+    return make_application
+
+
+@pytest.fixture(
+    params=[
+        application_maker_factory(use_view=True),
+        application_maker_factory(use_view=False),
+    ]
+)
+def make_app(request):
+    return request.param
+
+
 async def test_get_article_with_correct_path_parameters_should_return_parameters_in_path(
-    aiohttp_client, loop
+    aiohttp_client, loop, make_app
 ):
-    app = web.Application()
-    app.router.add_view("/article/{author_id}/tag/{tag}/before/{date}", ArticleView)
+    app = make_app()
 
     client = await aiohttp_client(app)
     resp = await client.get("/article/1234/tag/music/before/1980")
@@ -22,10 +54,9 @@ async def test_get_article_with_correct_path_parameters_should_return_parameters
 
 
 async def test_get_article_with_wrong_path_parameters_should_return_error(
-    aiohttp_client, loop
+    aiohttp_client, loop, make_app
 ):
-    app = web.Application()
-    app.router.add_view("/article/{author_id}/tag/{tag}/before/{date}", ArticleView)
+    app = make_app()
 
     client = await aiohttp_client(app)
     resp = await client.get("/article/1234/tag/music/before/now")
