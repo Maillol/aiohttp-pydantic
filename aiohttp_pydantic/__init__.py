@@ -1,4 +1,7 @@
-from .view import PydanticView, inject_params as unpack_request
+from .view import PydanticView
+
+
+unpack_request = PydanticView.decorator()
 
 __version__ = "1.12.0"
 

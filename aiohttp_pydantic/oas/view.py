@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from aiohttp_pydantic.oas.struct import OpenApiSpec3, OperationObject, PathItem
 from . import docstring_parser
 
-from ..injectors import _parse_func_signature
+from ..injectors import FuncSignatureParser
 from ..utils import is_pydantic_base_model
 from ..view import PydanticView, is_pydantic_view, is_pydantic_handler
 from .typing import is_status_code_type
@@ -78,7 +78,7 @@ def _add_http_method_to_oas(
     oas: OpenApiSpec3, oas_path: PathItem, http_method: str, handler: Callable[..., Awaitable[None]]
 ):
     oas_operation: OperationObject = getattr(oas_path, http_method)
-    path_args, body_args, qs_args, header_args, defaults = _parse_func_signature(
+    path_args, body_args, qs_args, header_args, defaults = FuncSignatureParser().parse(
         handler, unpack_group=True
     )
     description = getdoc(handler)

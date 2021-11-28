@@ -18,7 +18,8 @@ class JSONEncoder(json.JSONEncoder):
 
 
 class ArticleView(PydanticView):
-    async def get(self, *, signature_expired: datetime):
+    @staticmethod  # TODO update test pytest.fixture to test this function with staticmethod, classmethod and method
+    async def get(*, signature_expired: datetime):
         return web.json_response(
             {"signature": signature_expired}, dumps=JSONEncoder().encode
         )

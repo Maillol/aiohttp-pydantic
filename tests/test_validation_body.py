@@ -31,7 +31,7 @@ async def post(request, article: ArticleModel):
     return web.json_response(article.dict())
 
 
-@unpack_request()
+@unpack_request
 async def put(request, articles: ArticleModels):
     return web.json_response([article.dict() for article in articles])
 

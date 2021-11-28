@@ -9,6 +9,8 @@ from aiohttp_pydantic.injectors import Group
 
 
 class ArticleView(PydanticView):
+
+    # @staticmethod
     async def get(
         self,
         with_comments: bool,

@@ -20,6 +20,7 @@ class ArticleModels(BaseModel):
 
 
 class ArticleView(PydanticView):
+
     async def post(self, article: ArticleModel):
         return web.json_response(article.dict())
 

@@ -1,7 +1,6 @@
 from functools import update_wrapper
-from inspect import iscoroutinefunction
-from typing import Any, Callable, Generator, Iterable, Set, ClassVar
-import warnings
+from inspect import iscoroutinefunction, getattr_static
+from typing import Any, Generator, Set, ClassVar, Type
 
 from aiohttp.abc import AbstractView
 from aiohttp.hdrs import METH_ALL
@@ -16,7 +15,7 @@ from .injectors import (
     HeadersGetter,
     MatchInfoGetter,
     QueryGetter,
-    _parse_func_signature,
+    FuncSignatureParser,
     CONTEXT,
     Group,
 )
@@ -29,6 +28,7 @@ class PydanticView(AbstractView):
 
     # Allowed HTTP methods; overridden when subclassed.
     allowed_methods: ClassVar[Set[str]] = {}
+    func_signature_parser: ClassVar[Type[FuncSignatureParser]] = FuncSignatureParser
 
     async def _iter(self) -> StreamResponse:
         if (method_name := self.request.method) not in self.allowed_methods:
@@ -52,49 +52,27 @@ class PydanticView(AbstractView):
 
         for meth_name in METH_ALL:
             if meth_name.lower() in vars(cls):
+                static_handler = getattr_static(cls, meth_name.lower())
                 handler = getattr(cls, meth_name.lower())
-                decorator = inject_params(
-                    parse_func_signature=cls.parse_func_signature, is_function=False
-                )
+                if isinstance(static_handler, (staticmethod, classmethod)):
+                    decorator = inject_params_decorator_builder(
+                        func_signature_parser=cls.func_signature_parser,
+                        target_type='staticmethod',
+                        on_validation_error=cls.on_validation_error)
+                else:
+                    decorator = inject_params_decorator_builder(
+                        func_signature_parser=cls.func_signature_parser,
+                        target_type='method',
+                        on_validation_error=cls.on_validation_error)
                 decorated_handler = decorator(handler)
                 setattr(cls, meth_name.lower(), decorated_handler)
 
     def _raise_allowed_methods(self) -> None:
         raise HTTPMethodNotAllowed(self.request.method, self.allowed_methods)
 
-    def raise_not_allowed(self) -> None:
-        warnings.warn(
-            "PydanticView.raise_not_allowed is deprecated and renamed _raise_allowed_methods",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        self._raise_allowed_methods()
-
     @staticmethod
-    def parse_func_signature(func: Callable) -> Iterable[AbstractInjector]:
-        path_args, body_args, qs_args, header_args, defaults = _parse_func_signature(
-            func
-        )
-        injectors = []
-
-        def default_value(args: dict) -> dict:
-            """
-            Returns the default values of args.
-            """
-            return {name: defaults[name] for name in args if name in defaults}
-
-        if path_args:
-            injectors.append(MatchInfoGetter(path_args, default_value(path_args)))
-        if body_args:
-            injectors.append(BodyGetter(body_args, default_value(body_args)))
-        if qs_args:
-            injectors.append(QueryGetter(qs_args, default_value(qs_args)))
-        if header_args:
-            injectors.append(HeadersGetter(header_args, default_value(header_args)))
-        return injectors
-
     async def on_validation_error(
-        self, exception: ValidationError, context: CONTEXT
+        request, exception: ValidationError, context: CONTEXT
     ) -> StreamResponse:
         """
         This method is a hook to intercept ValidationError.
@@ -103,35 +81,44 @@ class PydanticView(AbstractView):
         The exception is a pydantic.ValidationError and the context is "body",
         "headers", "path" or "query string"
         """
-        return await on_validation_error(exception, context)
+        errors = exception.errors()
+        for error in errors:
+            error["in"] = context
+
+        return json_response(data=errors, status=400)
+
+    @classmethod
+    def decorator(cls):
+        """
+        Return a decorator to use pydantic with http handler.
+        """
+        return inject_params_decorator_builder(
+            func_signature_parser=cls.func_signature_parser,
+            target_type='function',
+            on_validation_error=cls.on_validation_error)
 
 
-async def on_validation_error(exception: ValidationError, context: CONTEXT):
-    errors = exception.errors()
-    for error in errors:
-        error["in"] = context
-
-    return json_response(data=errors, status=400)
-
-
-def inject_params(
-    _sentinel=None,
+def inject_params_decorator_builder(
     *,
-    parse_func_signature: Callable[
-        [Callable], Iterable[AbstractInjector]
-    ] = PydanticView.parse_func_signature,
-    is_function=True,
-    on_validation_error=on_validation_error,
+    func_signature_parser: Type[FuncSignatureParser],
+    target_type='function',
+    on_validation_error,
 ):
     """
-    Decorator to unpack the query string, route path, body and http header in
+    Build a decorator to unpack the query string, route path, body and http header in
     the parameters of the web handler regarding annotations.
     """
 
-    def _inject_params(handler):
-        injectors = parse_func_signature(handler)
+    def inject_params_decorator(handler):
+        """
+        Decorator to unpack the query string, route path, body and http header in
+        the parameters of the web handler regarding annotations.
+        """
+        func_parser = func_signature_parser()
+        func_parser.parse(handler)
+        injectors = func_parser.injectors()
 
-        if is_function:
+        if target_type == 'function':
             async def wrapped_handler(request):
                 args = []
                 kwargs = {}
@@ -142,13 +129,13 @@ def inject_params(
                         else:
                             injector.inject(request, args, kwargs)
                     except ValidationError as error:
-                        return await on_validation_error(error, injector.context)
+                        return await on_validation_error(request, error, injector.context)
 
                 return await handler(request, *args, **kwargs)
 
             wrapped_handler.is_pydantic_handler = True
 
-        else:
+        elif target_type == 'method':
             async def wrapped_handler(self):
                 args = []
                 kwargs = {}
@@ -159,17 +146,29 @@ def inject_params(
                         else:
                             injector.inject(self.request, args, kwargs)
                     except ValidationError as error:
-                        return await self.on_validation_error(error, injector.context)
+                        return await on_validation_error(self.request, error, injector.context)
 
                 return await handler(self, *args, **kwargs)
+
+        elif target_type == 'staticmethod':
+            async def wrapped_handler(self):
+                args = []
+                kwargs = {}
+                for injector in injectors:
+                    try:
+                        if iscoroutinefunction(injector.inject):
+                            await injector.inject(self.request, args, kwargs)
+                        else:
+                            injector.inject(self.request, args, kwargs)
+                    except ValidationError as error:
+                        return await on_validation_error(self.request, error, injector.context)
+
+                return await handler(*args, **kwargs)
 
         update_wrapper(wrapped_handler, handler)
         return wrapped_handler
 
-    if callable(_sentinel):
-        return _inject_params(_sentinel)
-
-    return _inject_params
+    return inject_params_decorator
 
 
 def is_pydantic_view(obj) -> bool:

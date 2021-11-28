@@ -3,7 +3,7 @@ import typing
 from inspect import signature, getmro
 from json.decoder import JSONDecodeError
 from types import SimpleNamespace
-from typing import Callable, Tuple, Literal, Type
+from typing import Callable, Tuple, Literal, Type, ClassVar
 
 from aiohttp.web_exceptions import HTTPBadRequest
 from aiohttp.web_request import BaseRequest
@@ -37,7 +37,7 @@ class AbstractInjector(metaclass=abc.ABCMeta):
         """
 
     @abc.abstractmethod
-    def inject(self, request: BaseRequest, args_view: list, kwargs_view: dict):
+    async def inject(self, request: BaseRequest, args_view: list, kwargs_view: dict):
         """
         Get elements in request and inject them in args_view or kwargs_view.
         """
@@ -55,7 +55,7 @@ class MatchInfoGetter(AbstractInjector):
         attrs.update(default_values)
         self.model = type("PathModel", (BaseModel,), attrs)
 
-    def inject(self, request: BaseRequest, args_view: list, kwargs_view: dict):
+    async def inject(self, request: BaseRequest, args_view: list, kwargs_view: dict):
         args_view.extend(self.model(**request.match_info).dict().values())
 
 
@@ -116,7 +116,7 @@ class QueryGetter(AbstractInjector):
             name for name, spec in args_spec.items() if typing.get_origin(spec) is list
         )
 
-    def inject(self, request: BaseRequest, args_view: list, kwargs_view: dict):
+    async def inject(self, request: BaseRequest, args_view: list, kwargs_view: dict):
         data = self._query_to_dict(request.query)
         cleaned = self.model(**data).dict()
         for group_name, (group_cls, group_attrs) in self._groups.items():
@@ -162,7 +162,7 @@ class HeadersGetter(AbstractInjector):
         attrs.update(default_values)
         self.model = type("HeaderModel", (BaseModel,), attrs)
 
-    def inject(self, request: BaseRequest, args_view: list, kwargs_view: dict):
+    async def inject(self, request: BaseRequest, args_view: list, kwargs_view: dict):
         header = {k.lower().replace("-", "_"): v for k, v in request.headers.items()}
         cleaned = self.model(**header).dict()
         for group_name, (group_cls, group_attrs) in self._groups.items():
@@ -212,58 +212,99 @@ def _get_group_signature(cls) -> Tuple[dict, dict]:
     return sig, defaults
 
 
-def _parse_func_signature(
-    func: Callable, unpack_group: bool = False
-) -> Tuple[dict, dict, dict, dict, dict]:
+class FuncSignatureParser:
     """
-    Analyse function signature and returns 5-tuple:
-        0 - arguments will be set from the url path
-        1 - argument will be set from the request body.
-        2 - argument will be set from the query string.
-        3 - argument will be set from the HTTP headers.
-        4 - Default value for each parameters
+    This class instantiates injectors regarding a function signature.
     """
 
-    path_args = {}
-    body_args = {}
-    qs_args = {}
-    header_args = {}
-    defaults = {}
+    match_info_getter: ClassVar[Type[MatchInfoGetter]] = MatchInfoGetter
+    body_getter: ClassVar[Type[BodyGetter]] = BodyGetter
+    query_getter: ClassVar[Type[QueryGetter]] = QueryGetter
+    headers_getter: ClassVar[Type[HeadersGetter]] = HeadersGetter
 
-    for param_name, param_spec in signature(func).parameters.items():
-        if param_name in ("self", "request"):  # FIXME retro compatibility !!!
-            continue
+    def __init__(self):
+        self.path_args = {}
+        self.body_args = {}
+        self.qs_args = {}
+        self.header_args = {}
+        self.defaults = {}
+        self.func = None
 
-        if param_spec.annotation == param_spec.empty:
-            raise RuntimeError(f"The parameter {param_name} must have an annotation")
+    def parse(
+        self, func: Callable, unpack_group: bool = False
+    ) -> Tuple[dict, dict, dict, dict, dict]:
+        """
+        Analyse function signature and returns 5-tuple:
+            0 - arguments will be set from the url path
+            1 - argument will be set from the request body.
+            2 - argument will be set from the query string.
+            3 - argument will be set from the HTTP headers.
+            4 - Default value for each parameters
+        """
 
-        if param_spec.default is not param_spec.empty:
-            defaults[param_name] = param_spec.default
+        self.path_args = {}
+        self.body_args = {}
+        self.qs_args = {}
+        self.header_args = {}
+        self.defaults = {}
 
-        if param_spec.kind is param_spec.POSITIONAL_ONLY:
-            path_args[param_name] = param_spec.annotation
+        for i, (param_name, param_spec) in enumerate(signature(func).parameters.items()):
+            # if i == 0:  # Ignore self or request.
+            if param_name in ('self', 'request'):  # FIXME: should be parametrable.
+                continue
 
-        elif param_spec.kind is param_spec.POSITIONAL_OR_KEYWORD:
-            if is_pydantic_base_model(param_spec.annotation):
-                body_args[param_name] = param_spec.annotation
+            if param_spec.annotation == param_spec.empty:
+                raise RuntimeError(f"The parameter {param_name} must have an annotation")
+
+            if param_spec.default is not param_spec.empty:
+                self.defaults[param_name] = param_spec.default
+
+            if param_spec.kind is param_spec.POSITIONAL_ONLY:
+                self.path_args[param_name] = param_spec.annotation
+
+            elif param_spec.kind is param_spec.POSITIONAL_OR_KEYWORD:
+                if is_pydantic_base_model(param_spec.annotation):
+                    self.body_args[param_name] = param_spec.annotation
+                else:
+                    self.qs_args[param_name] = param_spec.annotation
+            elif param_spec.kind is param_spec.KEYWORD_ONLY:
+                self.header_args[param_name] = param_spec.annotation
             else:
-                qs_args[param_name] = param_spec.annotation
-        elif param_spec.kind is param_spec.KEYWORD_ONLY:
-            header_args[param_name] = param_spec.annotation
-        else:
-            raise RuntimeError(f"You cannot use {param_spec.VAR_POSITIONAL} parameters")
+                raise RuntimeError(f"You cannot use {param_spec.VAR_POSITIONAL} parameters")
 
-    if unpack_group:
-        try:
-            _unpack_group_in_signature(qs_args, defaults)
-            _unpack_group_in_signature(header_args, defaults)
-        except DuplicateNames as error:
-            raise TypeError(
-                f"Parameters conflict in function {func},"
-                f" the group {error.group} has an attribute named {error.attr_name}"
-            ) from None
+        if unpack_group:
+            try:
+                _unpack_group_in_signature(self.qs_args, self.defaults)
+                _unpack_group_in_signature(self.header_args, self.defaults)
+            except DuplicateNames as error:
+                raise TypeError(
+                    f"Parameters conflict in function {func},"
+                    f" the group {error.group} has an attribute named {error.attr_name}"
+                ) from None
 
-    return path_args, body_args, qs_args, header_args, defaults
+        return self.path_args, self.body_args, self.qs_args, self.header_args, self.defaults
+
+    def injectors(self):
+        """
+        Returns a list of injectors.
+        """
+        injectors = []
+
+        def default_value(args: dict) -> dict:
+            """
+            Returns the default values of args.
+            """
+            return {name: self.defaults[name] for name in args if name in self.defaults}
+
+        if self.path_args:
+            injectors.append(self.match_info_getter(self.path_args, default_value(self.path_args)))
+        if self.body_args:
+            injectors.append(self.body_getter(self.body_args, default_value(self.body_args)))
+        if self.qs_args:
+            injectors.append(self.query_getter(self.qs_args, default_value(self.qs_args)))
+        if self.header_args:
+            injectors.append(self.headers_getter(self.header_args, default_value(self.header_args)))
+        return injectors
 
 
 class DuplicateNames(Exception):
