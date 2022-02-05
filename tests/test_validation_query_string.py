@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Optional, List
 from pydantic import Field
 from aiohttp import web

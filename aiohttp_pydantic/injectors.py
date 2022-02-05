@@ -3,7 +3,7 @@ import typing
 from inspect import signature, getmro
 from json.decoder import JSONDecodeError
 from types import SimpleNamespace
-from typing import Callable, Tuple, Literal, Type
+from typing import Callable, Tuple, Literal, Type, get_type_hints
 
 from aiohttp.web_exceptions import HTTPBadRequest
 from aiohttp.web_request import BaseRequest
@@ -201,12 +201,18 @@ def _get_group_signature(cls) -> Tuple[dict, dict]:
     mro = getmro(cls)
     for base in reversed(mro[: mro.index(Group)]):
         attrs = vars(base)
+
+        # Use __annotations__ to know if an attribute is
+        # overwrite to remove the default value.
         for attr_name, type_ in base.__annotations__.items():
-            sig[attr_name] = type_
             if (default := attrs.get(attr_name)) is None:
                 defaults.pop(attr_name, None)
             else:
                 defaults[attr_name] = default
+
+        # Use get_type_hints to have postponed annotations.
+        for attr_name, type_ in get_type_hints(base).items():
+            sig[attr_name] = type_
 
     return sig, defaults
 
@@ -229,26 +235,29 @@ def _parse_func_signature(
     header_args = {}
     defaults = {}
 
+    annotations = get_type_hints(func)
     for param_name, param_spec in signature(func).parameters.items():
+
         if param_name == "self":
             continue
 
         if param_spec.annotation == param_spec.empty:
             raise RuntimeError(f"The parameter {param_name} must have an annotation")
 
+        annotation = annotations[param_name]
         if param_spec.default is not param_spec.empty:
             defaults[param_name] = param_spec.default
 
         if param_spec.kind is param_spec.POSITIONAL_ONLY:
-            path_args[param_name] = param_spec.annotation
+            path_args[param_name] = annotation
 
         elif param_spec.kind is param_spec.POSITIONAL_OR_KEYWORD:
-            if is_pydantic_base_model(param_spec.annotation):
-                body_args[param_name] = param_spec.annotation
+            if is_pydantic_base_model(annotation):
+                body_args[param_name] = annotation
             else:
-                qs_args[param_name] = param_spec.annotation
+                qs_args[param_name] = annotation
         elif param_spec.kind is param_spec.KEYWORD_ONLY:
-            header_args[param_name] = param_spec.annotation
+            header_args[param_name] = annotation
         else:
             raise RuntimeError(f"You cannot use {param_spec.VAR_POSITIONAL} parameters")
 

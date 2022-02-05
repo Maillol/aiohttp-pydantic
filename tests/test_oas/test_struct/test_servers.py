@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pytest
 
 from aiohttp_pydantic.oas.struct import OpenApiSpec3

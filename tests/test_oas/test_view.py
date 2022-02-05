@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from enum import Enum
 from typing import List, Optional, Union, Literal
 from uuid import UUID
@@ -385,14 +387,15 @@ async def test_generated_view_info_as_title():
     }
 
 
+class Pagination(Group):
+    page: int = 1
+    page_size: int = 20
+
+
 async def test_use_parameters_group_should_not_impact_the_oas(aiohttp_client):
     class PetCollectionView1(PydanticView):
         async def get(self, page: int = 1, page_size: int = 20) -> r200[List[Pet]]:
             return web.json_response()
-
-    class Pagination(Group):
-        page: int = 1
-        page_size: int = 20
 
     class PetCollectionView2(PydanticView):
         async def get(self, pagination: Pagination) -> r200[List[Pet]]:

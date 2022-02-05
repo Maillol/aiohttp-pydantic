@@ -1,7 +1,7 @@
 import typing
 from inspect import getdoc
 from itertools import count
-from typing import List, Type, Optional
+from typing import List, Type, Optional, get_type_hints
 
 from aiohttp.web import Response, json_response
 from aiohttp.web_app import Application
@@ -126,7 +126,7 @@ def _add_http_method_to_oas(
                 ref_template="#/components/schemas/{model}"
             )
 
-    return_type = handler.__annotations__.get("return")
+    return_type = get_type_hints(handler).get("return")
     if return_type is not None:
         _OASResponseBuilder(oas, oas_operation, status_code_descriptions).build(
             return_type
