@@ -3,7 +3,7 @@ from typing import Union
 from aiohttp import web
 
 from aiohttp_pydantic import PydanticView
-from aiohttp_pydantic.oas.typing import r404
+from aiohttp_pydantic.oas.typing import r200
 
 from .model import Error, Pet
 
@@ -37,7 +37,7 @@ def add_markdown_response(func):
 
 class PetDetailsView(PydanticView):
     @add_markdown_response
-    async def get(self, id: int, /) -> r404[Error]:
+    async def get(self, id: int, /) -> r200:
         """
         Show a detailed listing describing the pet.
 
