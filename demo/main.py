@@ -4,7 +4,7 @@ from aiohttp_pydantic import oas
 
 from .model import Model
 from .view import PetCollectionView, PetItemView
-from .customize import PetDetailsView
+from .customize_oas import PetDetailsView
 
 
 @middleware
