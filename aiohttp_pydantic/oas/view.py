@@ -181,13 +181,12 @@ async def oas_ui(request):
     View to serve the swagger-ui to read open api specification of application.
     """
     template = request.app["index template"]
-    root = request.app.router['index'].canonical
 
     return Response(
         text=template.render(
             {
-                "openapi_spec_url": f"{root}/spec",
-                "static_url": f"{root}/static",
+                "openapi_spec_url": request.app.router['spec'].canonical,
+                "static_url": request.app.router['static'].canonical,
             }
         ),
         content_type="text/html",
