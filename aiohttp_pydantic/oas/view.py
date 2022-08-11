@@ -1,18 +1,17 @@
 import typing
 from inspect import getdoc
 from itertools import count
-from typing import List, Type, Optional, get_type_hints
+from typing import List, Optional, Type, get_type_hints
 
 from aiohttp.web import Response, json_response
 from aiohttp.web_app import Application
 from pydantic import BaseModel
 
-from aiohttp_pydantic.oas.struct import OpenApiSpec3, OperationObject, PathItem
-from . import docstring_parser
-
 from ..injectors import _parse_func_signature
 from ..utils import is_pydantic_base_model
 from ..view import PydanticView, is_pydantic_view
+from . import docstring_parser
+from .struct import OpenApiSpec3, OperationObject, PathItem
 from .typing import is_status_code_type
 
 
@@ -183,15 +182,11 @@ async def oas_ui(request):
     """
     template = request.app["index template"]
 
-    static_url = request.app.router["static"].url_for(filename="")
-    spec_url = request.app.router["spec"].url_for()
-    host = request.url.origin()
-
     return Response(
         text=template.render(
             {
-                "openapi_spec_url": host.with_path(str(spec_url)),
-                "static_url": host.with_path(str(static_url)),
+                "openapi_spec_url": request.app.router['spec'].canonical,
+                "static_url": request.app.router['static'].canonical,
             }
         ),
         content_type="text/html",
