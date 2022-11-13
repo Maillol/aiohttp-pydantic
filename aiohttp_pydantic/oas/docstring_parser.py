@@ -120,9 +120,9 @@ def tags(docstring: str) -> List[str]:
     return []
 
 
-def deprecated(docstring: str) ->bool:
+def deprecated(docstring: str) -> bool:
     """
-    Extract the "Tags:" block of the docstring.
+    Extract the "Deprecated:" block of the docstring.
     """
     iterator = LinesIterator(docstring)
     for line in iterator:
