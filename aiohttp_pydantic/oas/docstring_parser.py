@@ -127,10 +127,7 @@ def deprecated(docstring: str) -> bool:
     iterator = LinesIterator(docstring)
     for line in iterator:
         if re.fullmatch("deprecated\\s*:.*", line, re.IGNORECASE):
-            iterator.rewind()
-            lines = " ".join(_i_extract_block(iterator))
-            if [" ".join(e.split()) for e in re.split("[,;]", lines.split(":")[1])][0] == "True":
-                return True
+            return True
     return False
 
 
@@ -141,7 +138,7 @@ def operation(docstring: str) -> str:
     lines = LinesIterator(docstring)
     ret = []
     for line in lines:
-        if re.fullmatch("status\\s+codes?\\s*:|tags\\s*:.*|deprecated\\s*:.*", line, re.IGNORECASE):
+        if re.fullmatch("status\\s+codes?\\s*:|tags\\s*:.*", line, re.IGNORECASE):
             lines.rewind()
             for _ in _i_extract_block(lines):
                 pass
