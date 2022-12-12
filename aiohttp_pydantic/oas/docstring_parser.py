@@ -120,6 +120,17 @@ def tags(docstring: str) -> List[str]:
     return []
 
 
+def deprecated(docstring: str) -> bool:
+    """
+    Extract the "Deprecated:" block of the docstring.
+    """
+    iterator = LinesIterator(docstring)
+    for line in iterator:
+        if re.fullmatch("deprecated\\s*:.*", line, re.IGNORECASE):
+            return True
+    return False
+
+
 def operation(docstring: str) -> str:
     """
     Extract all docstring except the "Status Code:" block.

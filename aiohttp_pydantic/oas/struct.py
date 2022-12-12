@@ -207,6 +207,15 @@ class OperationObject:
         else:
             self._spec.pop("tags", None)
 
+    @property
+    def deprecated(self) -> bool:
+        return self._spec.get("deprecated", [])
+
+    @deprecated.setter
+    def deprecated(self, deprecated: bool):
+        if deprecated:
+            self._spec["deprecated"] = deprecated
+
 
 class PathItem:
     def __init__(self, spec: dict):
