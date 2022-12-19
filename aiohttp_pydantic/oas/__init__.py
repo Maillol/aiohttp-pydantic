@@ -15,13 +15,17 @@ def setup(
     enable: bool = True,
     version_spec: Optional[str] = None,
     title_spec: Optional[str] = None,
+    display_configurations: Optional[dict] = None
 ):
+    if display_configurations is None:
+        display_configurations = {}
     if enable:
         oas_app = web.Application()
         oas_app["apps to expose"] = tuple(apps_to_expose) or (app,)
         oas_app["index template"] = jinja2.Template(
-            resources.read_text("aiohttp_pydantic.oas", "index.j2")
+            resources.read_text("aiohttp_pydantic.oas", "index.j2"),
         )
+        oas_app["display_configurations"] = display_configurations
         oas_app["version_spec"] = version_spec
         oas_app["title_spec"] = title_spec
 
