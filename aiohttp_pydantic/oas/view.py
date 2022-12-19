@@ -253,6 +253,7 @@ async def oas_ui(request):
             {
                 "openapi_spec_url": request.app.router['spec'].canonical,
                 "static_url": request.app.router['static'].canonical,
+                "display_configurations": request.app["display_configurations"],
             }
         ),
         content_type="text/html",
