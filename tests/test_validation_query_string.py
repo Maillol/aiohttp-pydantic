@@ -55,7 +55,7 @@ class ArticleViewWithPaginationGroup(PydanticView):
 
 
 async def test_get_article_without_required_qs_should_return_an_error_message(
-    aiohttp_client, loop
+    aiohttp_client, event_loop
 ):
     app = web.Application()
     app.router.add_view("/article", ArticleView)
@@ -67,15 +67,16 @@ async def test_get_article_without_required_qs_should_return_an_error_message(
     assert await resp.json() == [
         {
             "in": "query string",
+            "input": {},
             "loc": ["with_comments"],
-            "msg": "field required",
-            "type": "value_error.missing",
+            "msg": "Field required",
+            "type": "missing",
         }
     ]
 
 
 async def test_get_article_with_wrong_qs_type_should_return_an_error_message(
-    aiohttp_client, loop
+    aiohttp_client, event_loop
 ):
     app = web.Application()
     app.router.add_view("/article", ArticleView)
@@ -87,15 +88,16 @@ async def test_get_article_with_wrong_qs_type_should_return_an_error_message(
     assert await resp.json() == [
         {
             "in": "query string",
+            "input": "foo",
             "loc": ["with_comments"],
-            "msg": "value could not be parsed to a boolean",
-            "type": "type_error.bool",
+            "msg": "Input should be a valid boolean, unable to interpret input",
+            "type": "bool_parsing",
         }
     ]
 
 
 async def test_get_article_with_valid_qs_should_return_the_parsed_type(
-    aiohttp_client, loop
+    aiohttp_client, event_loop
 ):
     app = web.Application()
     app.router.add_view("/article", ArticleView)
@@ -114,7 +116,7 @@ async def test_get_article_with_valid_qs_should_return_the_parsed_type(
 
 
 async def test_get_article_with_valid_qs_and_omitted_optional_should_return_default_value(
-    aiohttp_client, loop
+    aiohttp_client, event_loop
 ):
     app = web.Application()
     app.router.add_view("/article", ArticleView)
@@ -133,7 +135,7 @@ async def test_get_article_with_valid_qs_and_omitted_optional_should_return_defa
 
 
 async def test_get_article_with_multiple_value_for_qs_age_must_failed(
-    aiohttp_client, loop
+    aiohttp_client, event_loop
 ):
     app = web.Application()
     app.router.add_view("/article", ArticleView)
@@ -144,16 +146,17 @@ async def test_get_article_with_multiple_value_for_qs_age_must_failed(
     assert await resp.json() == [
         {
             "in": "query string",
+            "input": ['2', '3'],
             "loc": ["age"],
-            "msg": "value is not a valid integer",
-            "type": "type_error.integer",
+            "msg": "Input should be a valid integer",
+            "type": "int_type",
         }
     ]
     assert resp.status == 400
     assert resp.content_type == "application/json"
 
 
-async def test_get_article_with_multiple_value_of_tags(aiohttp_client, loop):
+async def test_get_article_with_multiple_value_of_tags(aiohttp_client, event_loop):
     app = web.Application()
     app.router.add_view("/article", ArticleView)
 
@@ -172,7 +175,7 @@ async def test_get_article_with_multiple_value_of_tags(aiohttp_client, loop):
     assert resp.content_type == "application/json"
 
 
-async def test_get_article_with_one_value_of_tags_must_be_a_list(aiohttp_client, loop):
+async def test_get_article_with_one_value_of_tags_must_be_a_list(aiohttp_client, event_loop):
     app = web.Application()
     app.router.add_view("/article", ArticleView)
 
@@ -191,7 +194,7 @@ async def test_get_article_with_one_value_of_tags_must_be_a_list(aiohttp_client,
     assert resp.content_type == "application/json"
 
 
-async def test_get_article_without_required_field_page(aiohttp_client, loop):
+async def test_get_article_without_required_field_page(aiohttp_client, event_loop):
     app = web.Application()
     app.router.add_view("/article", ArticleViewWithPaginationGroup)
 
@@ -201,16 +204,17 @@ async def test_get_article_without_required_field_page(aiohttp_client, loop):
     assert await resp.json() == [
         {
             "in": "query string",
+            "input": {"with_comments": "1"},
             "loc": ["page_num"],
-            "msg": "field required",
-            "type": "value_error.missing",
+            "msg": "Field required",
+            "type": "missing",
         }
     ]
     assert resp.status == 400
     assert resp.content_type == "application/json"
 
 
-async def test_get_article_with_page(aiohttp_client, loop):
+async def test_get_article_with_page(aiohttp_client, event_loop):
     app = web.Application()
     app.router.add_view("/article", ArticleViewWithPaginationGroup)
 
@@ -222,7 +226,7 @@ async def test_get_article_with_page(aiohttp_client, loop):
     assert resp.content_type == "application/json"
 
 
-async def test_get_article_with_page_and_page_size(aiohttp_client, loop):
+async def test_get_article_with_page_and_page_size(aiohttp_client, event_loop):
     app = web.Application()
     app.router.add_view("/article", ArticleViewWithPaginationGroup)
 
@@ -236,7 +240,7 @@ async def test_get_article_with_page_and_page_size(aiohttp_client, loop):
     assert resp.content_type == "application/json"
 
 
-async def test_get_article_with_page_and_wrong_page_size(aiohttp_client, loop):
+async def test_get_article_with_page_and_wrong_page_size(aiohttp_client, event_loop):
     app = web.Application()
     app.router.add_view("/article", ArticleViewWithPaginationGroup)
 
@@ -248,9 +252,10 @@ async def test_get_article_with_page_and_wrong_page_size(aiohttp_client, loop):
     assert await resp.json() == [
         {
             "in": "query string",
+            "input": "large",
             "loc": ["page_size"],
-            "msg": "value is not a valid integer",
-            "type": "type_error.integer",
+            "msg": "Input should be a valid integer, unable to parse string as an integer",
+            "type": "int_parsing",
         }
     ]
     assert resp.status == 400

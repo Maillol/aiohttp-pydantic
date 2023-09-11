@@ -100,7 +100,7 @@ class PydanticView(AbstractView):
         The exception is a pydantic.ValidationError and the context is "body",
         "headers", "path" or "query string"
         """
-        errors = exception.errors()
+        errors = exception.errors(include_url=False)
         for error in errors:
             error["in"] = context
 

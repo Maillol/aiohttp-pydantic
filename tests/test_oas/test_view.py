@@ -98,7 +98,7 @@ async def ensure_content_durability(client):
 
 
 @pytest.fixture
-async def generated_oas(aiohttp_client, loop) -> web.Application:
+async def generated_oas(aiohttp_client, event_loop) -> web.Application:
     app = web.Application()
     app.router.add_view("/pets", PetCollectionView)
     app.router.add_view("/pets/{id}", PetItemView)
@@ -111,7 +111,6 @@ async def generated_oas(aiohttp_client, loop) -> web.Application:
 async def test_generated_oas_should_have_components_schemas(generated_oas):
     assert generated_oas["components"]["schemas"] == {
         "Color": {
-            "description": "An enumeration.",
             "enum": ["red", "green", "pink"],
             "title": "Color",
             "type": "string",
@@ -147,13 +146,13 @@ async def test_pets_route_should_have_get_method(generated_oas):
                 "in": "query",
                 "name": "name",
                 "required": False,
-                "schema": {"title": "name", "type": "string"},
+                "schema": {"anyOf": [{"type": "string"}, {"type": "null"}], "default": None, "title": "name"},
             },
             {
                 "in": "header",
                 "name": "promo",
                 "required": False,
-                "schema": {"format": "uuid", "title": "promo", "type": "string"},
+                "schema": {"anyOf": [{"format": "uuid", "type": "string"}, {"type": "null"}], "title": "promo", "default": None},
             },
         ],
         "responses": {
@@ -279,7 +278,7 @@ async def test_pets_id_route_should_have_get_method(generated_oas):
                 "name": "day",
                 "required": False,
                 "schema": {
-                    "anyOf": [{"type": "integer"}, {"enum": ["now"], "type": "string"}],
+                    "anyOf": [{"type": "integer"}, {"const": "now"}],
                     "default": "now",
                     "title": "day",
                 },

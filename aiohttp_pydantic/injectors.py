@@ -56,7 +56,7 @@ class MatchInfoGetter(AbstractInjector):
         self.model = type("PathModel", (BaseModel,), attrs)
 
     def inject(self, request: BaseRequest, args_view: list, kwargs_view: dict):
-        args_view.extend(self.model(**request.match_info).dict().values())
+        args_view.extend(self.model(**request.match_info).model_dump().values())
 
 
 class BodyGetter(AbstractInjector):
@@ -68,7 +68,7 @@ class BodyGetter(AbstractInjector):
 
     def __init__(self, args_spec: dict, default_values: dict):
         self.arg_name, self.model = next(iter(args_spec.items()))
-        self._expect_object = self.model.schema()["type"] == "object"
+        self._expect_object = self.model.model_json_schema()["type"] == "object"
 
     async def inject(self, request: BaseRequest, args_view: list, kwargs_view: dict):
         try:
@@ -87,7 +87,7 @@ class BodyGetter(AbstractInjector):
                 content_type="application/json",
             ) from None
 
-        kwargs_view[self.arg_name] = self.model.parse_obj(body)
+        kwargs_view[self.arg_name] = self.model.model_validate(body)
 
 
 class QueryGetter(AbstractInjector):
@@ -117,7 +117,7 @@ class QueryGetter(AbstractInjector):
 
     def inject(self, request: BaseRequest, args_view: list, kwargs_view: dict):
         data = self._query_to_dict(request.query)
-        cleaned = self.model(**data).dict()
+        cleaned = self.model(**data).model_dump()
         for group_name, (group_cls, group_attrs) in self._groups.items():
             group = group_cls()
             for attr_name in group_attrs:
@@ -163,7 +163,7 @@ class HeadersGetter(AbstractInjector):
 
     def inject(self, request: BaseRequest, args_view: list, kwargs_view: dict):
         header = {k.lower().replace("-", "_"): v for k, v in request.headers.items()}
-        cleaned = self.model(**header).dict()
+        cleaned = self.model(**header).model_dump()
         for group_name, (group_cls, group_attrs) in self._groups.items():
             group = group_cls()
             for attr_name in group_attrs:

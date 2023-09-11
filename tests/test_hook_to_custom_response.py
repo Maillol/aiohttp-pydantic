@@ -4,7 +4,7 @@ from typing import Iterator, List, Optional
 
 from aiohttp import web
 from aiohttp.web_response import json_response
-from pydantic import BaseModel
+from pydantic import BaseModel, RootModel
 
 from aiohttp_pydantic import PydanticView
 
@@ -14,22 +14,22 @@ class ArticleModel(BaseModel):
     nb_page: Optional[int]
 
 
-class ArticleModels(BaseModel):
-    __root__: List[ArticleModel]
+class ArticleModels(RootModel):
+    root: List[ArticleModel]
 
     def __iter__(self) -> Iterator[ArticleModel]:
-        return iter(self.__root__)
+        return iter(self.root)
 
 
 class ArticleView(PydanticView):
     async def post(self, article: ArticleModel):
-        return web.json_response(article.dict())
+        return web.json_response(article.model_dump())
 
     async def put(self, articles: ArticleModels):
-        return web.json_response([article.dict() for article in articles])
+        return web.json_response([article.model_dump() for article in articles])
 
     async def on_validation_error(self, exception, context):
-        errors = exception.errors()
+        errors = exception.errors(include_url=False)
         for error in errors:
             error["in"] = context
             error["custom"] = "custom"
@@ -37,7 +37,7 @@ class ArticleView(PydanticView):
 
 
 async def test_post_an_article_with_wrong_type_field_should_return_an_error_message(
-    aiohttp_client, loop
+    aiohttp_client, event_loop
 ):
     app = web.Application()
     app.router.add_view("/article", ArticleView)
@@ -49,9 +49,10 @@ async def test_post_an_article_with_wrong_type_field_should_return_an_error_mess
     assert await resp.json() == [
         {
             "in": "body",
+            "input": "foo",
             "loc": ["nb_page"],
-            "msg": "value is not a valid integer",
+            "msg": "Input should be a valid integer, unable to parse string as an integer",
             "custom": "custom",
-            "type": "type_error.integer",
+            "type": "int_parsing",
         }
     ]
