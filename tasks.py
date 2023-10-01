@@ -5,9 +5,15 @@ To use this module, install invoke and type invoke -l
 from functools import partial
 import os
 from pathlib import Path
-from setuptools.config import read_configuration
-
+import setuptools.config
 from invoke import task, Exit, Task as Task_, call
+
+
+def read_configuration(conf_file) -> dict:
+    try:  # Setuptools >= 61
+        return setuptools.config.setupcfg.read_configuration(conf_file)
+    except Exception:
+        return setuptools.config.read_configuration(conf_file)
 
 
 def activate_venv(c, venv: str):
