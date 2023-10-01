@@ -18,7 +18,7 @@ class PetCollectionView(PydanticView):
         """
         pets = self.request.app["model"].list_pets()
         return web.json_response(
-            [pet.dict() for pet in pets if age is None or age == pet.age]
+            [pet.model_dump() for pet in pets if age is None or age == pet.age]
         )
 
     async def post(self, pet: Pet) -> r201[Pet]:
@@ -29,7 +29,7 @@ class PetCollectionView(PydanticView):
             201: Successful operation
         """
         self.request.app["model"].add_pet(pet)
-        return web.json_response(pet.dict())
+        return web.json_response(pet.model_dump())
 
 
 class PetItemView(PydanticView):
