@@ -11,7 +11,7 @@ class ArticleView(PydanticView):
 
 
 async def test_get_article_with_correct_path_parameters_should_return_parameters_in_path(
-    aiohttp_client, loop
+    aiohttp_client, event_loop
 ):
     app = web.Application()
     app.router.add_view("/article/{author_id}/tag/{tag}/before/{date}", ArticleView)
@@ -24,7 +24,7 @@ async def test_get_article_with_correct_path_parameters_should_return_parameters
 
 
 async def test_get_article_with_wrong_path_parameters_should_return_error(
-    aiohttp_client, loop
+    aiohttp_client, event_loop
 ):
     app = web.Application()
     app.router.add_view("/article/{author_id}/tag/{tag}/before/{date}", ArticleView)
@@ -36,8 +36,9 @@ async def test_get_article_with_wrong_path_parameters_should_return_error(
     assert await resp.json() == [
         {
             "in": "path",
+            "input": "now",
             "loc": ["date"],
-            "msg": "value is not a valid integer",
-            "type": "type_error.integer",
+            "msg": "Input should be a valid integer, unable to parse string as an integer",
+            "type": "int_parsing",
         }
     ]

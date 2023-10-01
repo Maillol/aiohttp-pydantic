@@ -5,7 +5,7 @@ from typing import List, Optional, Type, get_type_hints
 
 from aiohttp.web import Response, json_response
 from aiohttp.web_app import Application
-from pydantic import BaseModel
+from pydantic import RootModel
 
 from ..injectors import _parse_func_signature
 from ..utils import is_pydantic_base_model
@@ -28,10 +28,10 @@ class _OASResponseBuilder:
 
     def _handle_pydantic_base_model(self, obj):
         if is_pydantic_base_model(obj):
-            response_schema = obj.schema(
+            response_schema = obj.model_json_schema(
                 ref_template="#/components/schemas/{model}"
             ).copy()
-            if def_sub_schemas := response_schema.pop("definitions", None):
+            if def_sub_schemas := response_schema.pop("$defs", None):
                 self._oas.components.schemas.update(def_sub_schemas)
             return response_schema
         return {}
@@ -94,10 +94,10 @@ def _add_http_method_to_oas(
     if body_args:
         body_schema = (
             next(iter(body_args.values()))
-            .schema(ref_template="#/components/schemas/{model}")
+            .model_json_schema(ref_template="#/components/schemas/{model}")
             .copy()
         )
-        if def_sub_schemas := body_schema.pop("definitions", None):
+        if def_sub_schemas := body_schema.pop("$defs", None):
             oas.components.schemas.update(def_sub_schemas)
 
         oas_operation.request_body.content = {
@@ -115,14 +115,14 @@ def _add_http_method_to_oas(
             oas_operation.parameters[i].in_ = args_location
             oas_operation.parameters[i].name = name
 
-            attrs = {"__annotations__": {"__root__": type_}}
+            attrs = {"__annotations__": {"root": type_}}
             if name in defaults:
-                attrs["__root__"] = defaults[name]
+                attrs["root"] = defaults[name]
                 oas_operation.parameters[i].required = False
             else:
                 oas_operation.parameters[i].required = True
 
-            oas_operation.parameters[i].schema = type(name, (BaseModel,), attrs).schema(
+            oas_operation.parameters[i].schema = type(name, (RootModel,), attrs).model_json_schema(
                 ref_template="#/components/schemas/{model}"
             )
 

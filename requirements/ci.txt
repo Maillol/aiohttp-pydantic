@@ -6,7 +6,7 @@ bleach==5.0.1
 certifi==2022.12.7
 cffi==1.15.1
 charset-normalizer==2.1.1
-codecov==2.1.12
+codecov==2.1.13
 commonmark==0.9.1
 coverage==6.5.0
 cryptography==38.0.4

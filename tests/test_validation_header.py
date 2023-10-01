@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from enum import Enum
+from unittest.mock import ANY
 
 from aiohttp import web
 
@@ -61,7 +62,7 @@ class ArticleViewWithSignatureGroup(PydanticView):
 
 
 async def test_get_article_without_required_header_should_return_an_error_message(
-    aiohttp_client, loop
+    aiohttp_client, event_loop
 ):
     app = web.Application()
     app.router.add_view("/article", ArticleView)
@@ -73,15 +74,16 @@ async def test_get_article_without_required_header_should_return_an_error_messag
     assert await resp.json() == [
         {
             "in": "headers",
+            "input": ANY,
             "loc": ["signature_expired"],
-            "msg": "field required",
-            "type": "value_error.missing",
+            "msg": "Field required",
+            "type": "missing",
         }
     ]
 
 
 async def test_get_article_with_wrong_header_type_should_return_an_error_message(
-    aiohttp_client, loop
+    aiohttp_client, event_loop
 ):
     app = web.Application()
     app.router.add_view("/article", ArticleView)
@@ -93,15 +95,17 @@ async def test_get_article_with_wrong_header_type_should_return_an_error_message
     assert await resp.json() == [
         {
             "in": "headers",
+            "input": "foo",
+            "ctx": {"error": "input is too short"},
             "loc": ["signature_expired"],
-            "msg": "invalid datetime format",
-            "type": "value_error.datetime",
+            "msg": "Input should be a valid datetime, input is too short",
+            "type": "datetime_parsing",
         }
     ]
 
 
 async def test_get_article_with_valid_header_should_return_the_parsed_type(
-    aiohttp_client, loop
+    aiohttp_client, event_loop
 ):
     app = web.Application()
     app.router.add_view("/article", ArticleView)
@@ -116,7 +120,7 @@ async def test_get_article_with_valid_header_should_return_the_parsed_type(
 
 
 async def test_get_article_with_valid_header_containing_hyphen_should_be_returned(
-    aiohttp_client, loop
+    aiohttp_client, event_loop
 ):
     app = web.Application()
     app.router.add_view("/article", ArticleView)
@@ -130,7 +134,7 @@ async def test_get_article_with_valid_header_containing_hyphen_should_be_returne
     assert await resp.json() == {"signature": "2020-10-04T18:01:00"}
 
 
-async def test_wrong_value_to_header_defined_with_str_enum(aiohttp_client, loop):
+async def test_wrong_value_to_header_defined_with_str_enum(aiohttp_client, event_loop):
     app = web.Application()
     app.router.add_view("/coord", ViewWithEnumType)
 
@@ -140,11 +144,12 @@ async def test_wrong_value_to_header_defined_with_str_enum(aiohttp_client, loop)
         await resp.json()
         == [
             {
-                "ctx": {"enum_values": ["UMT", "MGRS"]},
+                "ctx": {"expected": "'UMT' or 'MGRS'"},
                 "in": "headers",
+                'input': 'WGS84',
                 "loc": ["format"],
-                "msg": "value is not a valid enumeration member; permitted: 'UMT', 'MGRS'",
-                "type": "type_error.enum",
+                "msg": "Input should be 'UMT' or 'MGRS'",
+                "type": "enum",
             }
         ]
         != {"signature": "2020-10-04T18:01:00"}
@@ -153,7 +158,7 @@ async def test_wrong_value_to_header_defined_with_str_enum(aiohttp_client, loop)
     assert resp.content_type == "application/json"
 
 
-async def test_correct_value_to_header_defined_with_str_enum(aiohttp_client, loop):
+async def test_correct_value_to_header_defined_with_str_enum(aiohttp_client, event_loop):
     app = web.Application()
     app.router.add_view("/coord", ViewWithEnumType)
 
@@ -164,7 +169,7 @@ async def test_correct_value_to_header_defined_with_str_enum(aiohttp_client, loo
     assert resp.content_type == "application/json"
 
 
-async def test_with_signature_group(aiohttp_client, loop):
+async def test_with_signature_group(aiohttp_client, event_loop):
     app = web.Application()
     app.router.add_view("/article", ArticleViewWithSignatureGroup)
 

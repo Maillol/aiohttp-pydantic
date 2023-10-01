@@ -73,27 +73,38 @@ Example:
         "loc": [
           "with_comments"
         ],
-        "msg": "value could not be parsed to a boolean",
-        "type": "type_error.bool"
+        "msg": "Input should be a valid boolean, unable to interpret input",
+        "input": "a",
+        "type": "bool_parsing"
       }
     ]
 
     $ curl -X GET http://127.0.0.1:8080/article?with_comments=yes
     {"with_comments": true}
 
-    $ curl -H "Content-Type: application/json" -X post http://127.0.0.1:8080/article --data '{}'
+    $ curl -H "Content-Type: application/json" -X POST http://127.0.0.1:8080/article --data '{}'
     [
       {
         "in": "body",
         "loc": [
           "name"
         ],
-        "msg": "field required",
-        "type": "value_error.missing"
+        "msg": "Field required",
+        "input": {},
+        "type": "missing"
+      },
+      {
+        "in": "body",
+        "loc": [
+          "nb_page"
+        ],
+        "msg": "Field required",
+        "input": {},
+        "type": "missing"
       }
     ]
 
-    $ curl -H "Content-Type: application/json" -X post http://127.0.0.1:8080/article --data '{"name": "toto", "nb_page": "3"}'
+    $ curl -H "Content-Type: application/json" -X POST http://127.0.0.1:8080/article --data '{"name": "toto", "nb_page": "3"}'
     {"name": "toto", "number_of_page": 3}
 
 API:
