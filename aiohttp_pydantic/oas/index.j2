@@ -53,7 +53,8 @@
         plugins: [
           SwaggerUIBundle.plugins.DownloadUrl
         ],
-        layout: "StandaloneLayout"
+        layout: "StandaloneLayout",
+        ...{{ display_configurations }},
       })
       {% if initOAuth is defined %}
       ui.initOAuth(
