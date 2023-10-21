@@ -411,6 +411,47 @@ You can redefine the on_validation_error hook in your PydanticView
             return json_response(data=errors, status=400)
 
 
+Custom Open API Schema
+----------------------
+
+You can define a hook to customize the schema that is generated for each
+function to clarify or adjust the computed schema. For this, ensure that the
+view's get/put/delete/etc. property is equipped with a `__modify_schema__`
+attribute, which is invoked as a callback each time the schema is generated.
+
+.. code-block:: python3
+    def add_custom_example(oas, oas_path, view, oas_operation):
+        """Adds a custom example to API description.
+
+        Refers to the example in the description to which it is attached.
+        """
+        oas.components.examples.setdefault('dog-example', {
+                'summary': 'A detailed listing for a dog',
+                'value': DOG_DESCRIPTION,
+            })
+
+        oas_operation.responses[200].content = {
+                'text/markdown': {
+                    'examples': {
+                        'dog': {
+                            '$ref': '#/components/examples/dog-example'
+                        }
+                    }
+                }
+            }
+
+
+    class PetView(PydanticView):
+        async def get(self, id: int, /) -> r200:
+            pass
+
+
+        get.__modify_schema__ = add_custom_example
+
+
+Such a method can be implemented well as method decorators, too.
+
+
 Demo
 ----
 
