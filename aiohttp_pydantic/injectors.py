@@ -235,7 +235,7 @@ def _parse_func_signature(
     header_args = {}
     defaults = {}
 
-    annotations = get_type_hints(func)
+    annotations = get_type_hints(func, include_extras=True)
     for param_name, param_spec in signature(func).parameters.items():
 
         if param_name == "self":
