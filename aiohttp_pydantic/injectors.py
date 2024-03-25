@@ -211,7 +211,7 @@ def _get_group_signature(cls) -> Tuple[dict, dict]:
                 defaults[attr_name] = default
 
         # Use get_type_hints to have postponed annotations.
-        for attr_name, type_ in get_type_hints(base).items():
+        for attr_name, type_ in get_type_hints(base, include_extras=True).items():
             sig[attr_name] = type_
 
     return sig, defaults
