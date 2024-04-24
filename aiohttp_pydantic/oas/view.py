@@ -13,6 +13,8 @@ from ..view import PydanticView, is_pydantic_view
 from . import docstring_parser
 from .struct import OpenApiSpec3, OperationObject, PathItem
 from .typing import is_status_code_type
+from .definition import (
+    key_apps_to_expose, key_index_template, key_version_spec, key_title_spec)
 
 
 class _OASResponseBuilder:
@@ -171,9 +173,9 @@ async def get_oas(request):
     """
     View to generate the Open Api Specification from PydanticView in application.
     """
-    apps = request.app["apps to expose"]
-    version_spec = request.app["version_spec"]
-    title_spec = request.app["title_spec"]
+    apps = request.app[key_apps_to_expose]
+    version_spec = request.app[key_version_spec]
+    title_spec = request.app[key_title_spec]
     return json_response(generate_oas(apps, version_spec, title_spec))
 
 
@@ -181,7 +183,7 @@ async def oas_ui(request):
     """
     View to serve the swagger-ui to read open api specification of application.
     """
-    template = request.app["index template"]
+    template = request.app[key_index_template]
 
     return Response(
         text=template.render(
