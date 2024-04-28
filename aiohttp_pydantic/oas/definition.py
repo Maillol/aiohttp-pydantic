@@ -2,12 +2,28 @@
 Definitions
 """
 
-from aiohttp import web
+from typing import Iterable
 
-key_apps_to_expose = web.AppKey("apps to expose")
-key_index_template = web.AppKey("index template")
-key_version_spec = web.AppKey("version spec")
-key_title_spec = web.AppKey("title spec")
+import aiohttp
+from aiohttp import web
+from packaging.version import Version
+
+AIOHTTP_HAS_APP_KEY: bool = Version(aiohttp.__version__) >= Version("3.9.0b0")
+
+
+if AIOHTTP_HAS_APP_KEY:
+    from aiohttp.web import AppKey
+else:
+
+    def AppKey(key_name: str, _) -> str:
+        return key_name
+
+
+key_apps_to_expose = web.AppKey("apps to expose", Iterable[web.Application])
+key_index_template = web.AppKey("index template", str)
+key_version_spec = web.AppKey("version spec", str)
+key_title_spec = web.AppKey("title spec", str)
+
 
 __all__ = [
     key_apps_to_expose,
