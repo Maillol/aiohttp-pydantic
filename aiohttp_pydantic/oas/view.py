@@ -1,4 +1,5 @@
 import typing
+import warnings
 from inspect import getdoc
 from itertools import count
 from typing import List, Optional, Type, get_type_hints
@@ -11,8 +12,17 @@ from ..injectors import _parse_func_signature
 from ..utils import is_pydantic_base_model
 from ..view import PydanticView, is_pydantic_view
 from . import docstring_parser
+from .definition import (
+    AIOHTTP_HAS_APP_KEY,
+    key_apps_to_expose,
+    key_index_template,
+    key_title_spec,
+    key_version_spec,
+)
 from .struct import OpenApiSpec3, OperationObject, PathItem
 from .typing import is_status_code_type
+
+_APP_KEY_NOT_SET = object()
 
 
 class _OASResponseBuilder:
@@ -167,13 +177,23 @@ def generate_oas(
     return oas.spec
 
 
+def _app_key_or_string(app, app_key, str_key):
+    if app_key in app:
+        return app[app_key]
+    if AIOHTTP_HAS_APP_KEY:
+        key_name = "key_" + str_key.replace(" ", "_")
+        warnings.warn(f"Use from aiohttp_pydantic.oas.definition import {key_name}; app[{key_name}] = ... "
+                      f"instead of app[{str_key}] = ...", DeprecationWarning, stacklevel=4)
+    return app[str_key]
+
+
 async def get_oas(request):
     """
     View to generate the Open Api Specification from PydanticView in application.
     """
-    apps = request.app["apps to expose"]
-    version_spec = request.app["version_spec"]
-    title_spec = request.app["title_spec"]
+    apps = _app_key_or_string(request.app, key_apps_to_expose, "apps to expose")
+    version_spec = _app_key_or_string(request.app, key_version_spec, "version spec")
+    title_spec = _app_key_or_string(request.app, key_title_spec, "title spec")
     return json_response(generate_oas(apps, version_spec, title_spec))
 
 
@@ -181,7 +201,7 @@ async def oas_ui(request):
     """
     View to serve the swagger-ui to read open api specification of application.
     """
-    template = request.app["index template"]
+    template = _app_key_or_string(request.app, key_index_template, "index template")
 
     return Response(
         text=template.render(
