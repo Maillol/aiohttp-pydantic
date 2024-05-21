@@ -96,6 +96,7 @@ def _add_http_method_to_oas(
     if description:
         oas_operation.description = docstring_parser.operation(description)
         oas_operation.tags = docstring_parser.tags(description)
+        oas_operation.security = docstring_parser.security(description)
         oas_operation.deprecated = docstring_parser.deprecated(description)
         status_code_descriptions = docstring_parser.status_code(description)
     else:
