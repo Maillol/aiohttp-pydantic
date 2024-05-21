@@ -5,7 +5,7 @@ from aiohttp import web
 from aiohttp_pydantic import PydanticView
 from aiohttp_pydantic.oas.typing import r200, r201, r204, r404
 
-from .model import Error, Pet
+from model import Error, Pet
 
 
 class PetCollectionView(PydanticView):
@@ -24,6 +24,8 @@ class PetCollectionView(PydanticView):
     async def post(self, pet: Pet) -> r201[Pet]:
         """
         Add a new pet to the store
+
+        Security: APIKeyHeader
 
         Status Codes:
             201: Successful operation

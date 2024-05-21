@@ -331,6 +331,10 @@ class Components:
     def schemas(self) -> dict:
         return self._spec.setdefault("schemas", {})
 
+    @property
+    def security_schemes(self) -> dict:
+        return self._spec.setdefault("securitySchemes", {})
+
 
 class OpenApiSpec3:
     def __init__(self):
