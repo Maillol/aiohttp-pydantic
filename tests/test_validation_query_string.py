@@ -54,6 +54,29 @@ class ArticleViewWithPaginationGroup(PydanticView):
         )
 
 
+class PaginationParamsDefaultNone(Group):
+    page: Optional[None] = None
+    page_size: Optional[int] = None
+
+
+class ParamsDefaultNoneView(PydanticView):
+    async def get(self, pagination: PaginationParamsDefaultNone):
+        return web.json_response(
+            {"page": pagination.page, "page_size": pagination.page_size}
+        )
+
+
+async def test_group_with_field_type_is_union_none_int(aiohttp_client, event_loop):
+    app = web.Application()
+    app.router.add_view("/bug56", ParamsDefaultNoneView)
+
+    client = await aiohttp_client(app)
+    resp = await client.get("/bug56")
+    assert resp.status == 200
+    assert resp.content_type == "application/json"
+    assert await resp.json() == {"page": None, "page_size": None}
+
+
 async def test_get_article_without_required_qs_should_return_an_error_message(
     aiohttp_client, event_loop
 ):
@@ -146,7 +169,7 @@ async def test_get_article_with_multiple_value_for_qs_age_must_failed(
     assert await resp.json() == [
         {
             "in": "query string",
-            "input": ['2', '3'],
+            "input": ["2", "3"],
             "loc": ["age"],
             "msg": "Input should be a valid integer",
             "type": "int_type",
@@ -175,7 +198,9 @@ async def test_get_article_with_multiple_value_of_tags(aiohttp_client, event_loo
     assert resp.content_type == "application/json"
 
 
-async def test_get_article_with_one_value_of_tags_must_be_a_list(aiohttp_client, event_loop):
+async def test_get_article_with_one_value_of_tags_must_be_a_list(
+    aiohttp_client, event_loop
+):
     app = web.Application()
     app.router.add_view("/article", ArticleView)
 
