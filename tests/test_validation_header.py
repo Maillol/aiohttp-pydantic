@@ -98,8 +98,8 @@ async def test_get_article_with_wrong_header_type_should_return_an_error_message
             "input": "foo",
             "ctx": {"error": "input is too short"},
             "loc": ["signature_expired"],
-            "msg": "Input should be a valid datetime, input is too short",
-            "type": "datetime_parsing",
+            "msg": "Input should be a valid datetime or date, input is too short",
+            "type": "datetime_from_date_parsing",
         }
     ]
 
