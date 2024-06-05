@@ -7,7 +7,7 @@ from swagger_ui_bundle import swagger_ui_path
 
 from .view import get_oas, oas_ui
 from .definition import (
-    key_apps_to_expose, key_index_template, key_version_spec, key_title_spec)
+    key_apps_to_expose, key_index_template, key_version_spec, key_title_spec, key_security)
 
 
 def setup(
@@ -17,6 +17,7 @@ def setup(
     enable: bool = True,
     version_spec: Optional[str] = None,
     title_spec: Optional[str] = None,
+    security: Optional[dict] = None,
 ):
     if enable:
         oas_app = web.Application()
@@ -26,6 +27,7 @@ def setup(
         )
         oas_app[key_version_spec] = version_spec
         oas_app[key_title_spec] = title_spec
+        oas_app[key_security] = security
 
         oas_app.router.add_get("/spec", get_oas, name="spec")
         oas_app.router.add_static("/static", swagger_ui_path, name="static")

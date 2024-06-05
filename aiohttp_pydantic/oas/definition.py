@@ -23,11 +23,12 @@ key_apps_to_expose = web.AppKey("apps to expose", Iterable[web.Application])
 key_index_template = web.AppKey("index template", str)
 key_version_spec = web.AppKey("version spec", str)
 key_title_spec = web.AppKey("title spec", str)
-
+key_security = web.AppKey("security", dict)
 
 __all__ = [
     key_apps_to_expose,
     key_index_template,
     key_version_spec,
     key_title_spec,
+    key_security,
 ]

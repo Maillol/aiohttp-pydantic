@@ -4,7 +4,7 @@ Utility to extract extra OAS description from docstring.
 
 import re
 import textwrap
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 
 class LinesIterator:
@@ -120,6 +120,21 @@ def tags(docstring: str) -> List[str]:
     return []
 
 
+def security(docstring: str) -> Optional[List[dict]]:
+    """
+    Extract the "Security:" block of the docstring.
+    """
+    iterator = LinesIterator(docstring)
+    for line in iterator:
+        if re.fullmatch("security\\s*:.*", line, re.IGNORECASE):
+            iterator.rewind()
+            lines = " ".join(_i_extract_block(iterator))
+            security_items = [" ".join(e.split()) for e in re.split("[,;]", lines.split(":")[1])]
+            return [{item: [] for item in security_items}]
+
+    return None
+
+
 def deprecated(docstring: str) -> bool:
     """
     Extract the "Deprecated:" block of the docstring.
@@ -138,7 +153,7 @@ def operation(docstring: str) -> str:
     lines = LinesIterator(docstring)
     ret = []
     for line in lines:
-        if re.fullmatch("status\\s+codes?\\s*:|tags\\s*:.*", line, re.IGNORECASE):
+        if re.fullmatch("status\\s+codes?\\s*:|tags\\s*:.*|security\\s*:.*", line, re.IGNORECASE):
             lines.rewind()
             for _ in _i_extract_block(lines):
                 pass
