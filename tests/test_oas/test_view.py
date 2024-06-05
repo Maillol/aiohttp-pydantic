@@ -285,7 +285,7 @@ async def test_pets_id_route_should_have_get_method(generated_oas):
                 "name": "day",
                 "required": False,
                 "schema": {
-                    "anyOf": [{"type": "integer"}, {"const": "now", "enum": ["now"], "type": "string"}],
+                    "anyOf": [{"type": "integer"}, {"const": "now"}],
                     "default": "now",
                     "title": "day",
                 },

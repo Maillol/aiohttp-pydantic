@@ -4,7 +4,7 @@ Utility to extract extra OAS description from docstring.
 
 import re
 import textwrap
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 
 class LinesIterator:
@@ -120,7 +120,7 @@ def tags(docstring: str) -> List[str]:
     return []
 
 
-def security(docstring: str) -> List[dict] | None:
+def security(docstring: str) -> Optional[List[dict]]:
     """
     Extract the "Security:" block of the docstring.
     """
