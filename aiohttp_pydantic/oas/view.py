@@ -142,6 +142,10 @@ def _add_http_method_to_oas(
             return_type
         )
 
+    customization = getattr(handler, '__modify_schema__', None)
+    if customization is not None:
+        customization(oas, oas_path, view, oas_operation)
+
 
 def generate_oas(
     apps: List[Application],

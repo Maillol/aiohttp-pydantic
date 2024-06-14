@@ -4,6 +4,7 @@ from aiohttp_pydantic import oas
 
 from .model import Model
 from .view import PetCollectionView, PetItemView
+from .customize_oas import PetDetailsView
 
 
 @middleware
@@ -20,3 +21,4 @@ oas.setup(app, version_spec="1.0.1", title_spec="My App")
 app["model"] = Model()
 app.router.add_view("/pets", PetCollectionView)
 app.router.add_view("/pets/{id}", PetItemView)
+app.router.add_view("/pets/{id}/details", PetDetailsView)

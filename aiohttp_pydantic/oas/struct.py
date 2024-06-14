@@ -319,6 +319,10 @@ class Components:
         self._spec = spec.setdefault("components", {})
 
     @property
+    def examples(self) -> dict:
+        return self._spec.setdefault("examples", {})
+
+    @property
     def schemas(self) -> dict:
         return self._spec.setdefault("schemas", {})
 
