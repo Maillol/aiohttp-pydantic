@@ -2,7 +2,7 @@
 Utility to write Open Api Specifications using the Python language.
 """
 
-from typing import Union, List
+from typing import Union, List, Optional
 
 
 class Info:
@@ -181,7 +181,7 @@ class OperationObject:
         return self._spec.get("security", [])
 
     @security.setter
-    def security(self, security: List[dict] | None):
+    def security(self, security: Optional[List[dict]]):
         if security is not None:
             self._spec["security"] = security
 
