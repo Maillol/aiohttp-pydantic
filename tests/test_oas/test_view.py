@@ -6,7 +6,9 @@ from uuid import UUID
 
 import pytest
 from aiohttp import web
+from packaging.version import Version
 from pydantic.main import BaseModel
+import pydantic_core
 
 from aiohttp_pydantic import PydanticView, oas
 from aiohttp_pydantic.injectors import Group
@@ -33,7 +35,7 @@ class Pet(BaseModel):
 
 class PetCollectionView(PydanticView):
     async def get(
-            self, format: str, name: Optional[str] = None, *, promo: Optional[UUID] = None
+        self, format: str, name: Optional[str] = None, *, promo: Optional[UUID] = None
     ) -> r200[List[Pet]]:
         """
         Get a list of pets
@@ -52,11 +54,11 @@ class PetCollectionView(PydanticView):
 
 class PetItemView(PydanticView):
     async def get(
-            self,
-            id: int,
-            /,
-            size: Union[int, Literal["x", "l", "s"]],
-            day: Union[int, Literal["now"]] = "now",
+        self,
+        id: int,
+        /,
+        size: Union[int, Literal["x", "l", "s"]],
+        day: Union[int, Literal["now"]] = "now",
     ) -> Union[r200[Pet], r404]:
         return web.json_response()
 
@@ -136,9 +138,9 @@ async def test_pets_route_should_have_get_method(generated_oas):
     assert generated_oas["paths"]["/pets"]["get"] == {
         "description": "Get a list of pets",
         "tags": ["pet"],
-        'security': [
+        "security": [
             {
-                'APIKeyHeader': [],
+                "APIKeyHeader": [],
             },
         ],
         "parameters": [
@@ -152,14 +154,21 @@ async def test_pets_route_should_have_get_method(generated_oas):
                 "in": "query",
                 "name": "name",
                 "required": False,
-                "schema": {"anyOf": [{"type": "string"}, {"type": "null"}], "default": None, "title": "name"},
+                "schema": {
+                    "anyOf": [{"type": "string"}, {"type": "null"}],
+                    "default": None,
+                    "title": "name",
+                },
             },
             {
                 "in": "header",
                 "name": "promo",
                 "required": False,
-                "schema": {"anyOf": [{"format": "uuid", "type": "string"}, {"type": "null"}], "title": "promo",
-                           "default": None},
+                "schema": {
+                    "anyOf": [{"format": "uuid", "type": "string"}, {"type": "null"}],
+                    "title": "promo",
+                    "default": None,
+                },
             },
         ],
         "responses": {
@@ -260,6 +269,11 @@ async def test_pets_id_route_should_have_delete_method(generated_oas):
 
 
 async def test_pets_id_route_should_have_get_method(generated_oas):
+    if Version(pydantic_core.__version__) >= Version("2.15.0"):
+        now_desc = {"type": "string", "const": "now", "enum": ["now"]}
+    else:
+        now_desc = {"const": "now"}
+
     assert generated_oas["paths"]["/pets/{id}"]["get"] == {
         "parameters": [
             {
@@ -285,7 +299,7 @@ async def test_pets_id_route_should_have_get_method(generated_oas):
                 "name": "day",
                 "required": False,
                 "schema": {
-                    "anyOf": [{"type": "integer"}, {"const": "now"}],
+                    "anyOf": [{"type": "integer"}, now_desc],
                     "default": "now",
                     "title": "day",
                 },
