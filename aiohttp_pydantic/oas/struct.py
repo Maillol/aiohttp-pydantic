@@ -177,6 +177,15 @@ class OperationObject:
         self._spec["summary"] = summary
 
     @property
+    def security(self) -> List[dict]:
+        return self._spec.get("security", [])
+
+    @security.setter
+    def security(self, security: List[dict] | None):
+        if security is not None:
+            self._spec["security"] = security
+
+    @property
     def description(self) -> str:
         return self._spec["description"]
 
@@ -321,6 +330,10 @@ class Components:
     @property
     def schemas(self) -> dict:
         return self._spec.setdefault("schemas", {})
+
+    @property
+    def security_schemes(self) -> dict:
+        return self._spec.setdefault("securitySchemes", {})
 
 
 class OpenApiSpec3:

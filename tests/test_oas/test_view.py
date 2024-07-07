@@ -33,11 +33,12 @@ class Pet(BaseModel):
 
 class PetCollectionView(PydanticView):
     async def get(
-        self, format: str, name: Optional[str] = None, *, promo: Optional[UUID] = None
+            self, format: str, name: Optional[str] = None, *, promo: Optional[UUID] = None
     ) -> r200[List[Pet]]:
         """
         Get a list of pets
 
+        Security: APIKeyHeader
         Tags: pet
         Status Codes:
           200: Successful operation
@@ -51,11 +52,11 @@ class PetCollectionView(PydanticView):
 
 class PetItemView(PydanticView):
     async def get(
-        self,
-        id: int,
-        /,
-        size: Union[int, Literal["x", "l", "s"]],
-        day: Union[int, Literal["now"]] = "now",
+            self,
+            id: int,
+            /,
+            size: Union[int, Literal["x", "l", "s"]],
+            day: Union[int, Literal["now"]] = "now",
     ) -> Union[r200[Pet], r404]:
         return web.json_response()
 
@@ -135,6 +136,11 @@ async def test_pets_route_should_have_get_method(generated_oas):
     assert generated_oas["paths"]["/pets"]["get"] == {
         "description": "Get a list of pets",
         "tags": ["pet"],
+        'security': [
+            {
+                'APIKeyHeader': [],
+            },
+        ],
         "parameters": [
             {
                 "in": "query",
@@ -152,7 +158,8 @@ async def test_pets_route_should_have_get_method(generated_oas):
                 "in": "header",
                 "name": "promo",
                 "required": False,
-                "schema": {"anyOf": [{"format": "uuid", "type": "string"}, {"type": "null"}], "title": "promo", "default": None},
+                "schema": {"anyOf": [{"format": "uuid", "type": "string"}, {"type": "null"}], "title": "promo",
+                           "default": None},
             },
         ],
         "responses": {

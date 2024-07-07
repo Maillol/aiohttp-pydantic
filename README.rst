@@ -411,6 +411,64 @@ You can redefine the on_validation_error hook in your PydanticView
             return json_response(data=errors, status=400)
 
 
+Add security to the endpoints
+--------------------------------------------------
+
+aiohttp_pydantic provides a basic way to add security to the endpoints. You can define the security
+on the setup level using the *security* parameter and then mark view methods that will require this security schema.
+
+.. code-block:: python3
+
+    from aiohttp import web
+    from aiohttp_pydantic import oas
+
+
+    app = web.Application()
+    oas.setup(app, security={"APIKeyHeader": {"type": "apiKey", "in": "header", "name": "Authorization"}})
+
+
+And then mark the view method with the *security* descriptor
+
+
+.. code-block:: python3
+
+
+    from aiohttp_pydantic import PydanticView
+    from aiohttp_pydantic.oas.typing import r200, r201, r204, r404
+
+
+    class Pet(BaseModel):
+        id: int
+        name: str
+
+
+    class Error(BaseModel):
+        error: str
+
+
+    class PetCollectionView(PydanticView):
+        async def get(self) -> r200[List[Pet]]:
+            """
+            Find all pets
+
+            Security: APIKeyHeader
+            Tags: pet
+            """
+            pets = self.request.app["model"].list_pets()
+            return web.json_response([pet.dict() for pet in pets])
+
+        async def post(self, pet: Pet) -> r201[Pet]:
+            """
+            Add a new pet to the store
+
+            Tags: pet
+            Status Codes:
+                201: The pet is created
+            """
+            self.request.app["model"].add_pet(pet)
+            return web.json_response(pet.dict())
+
+
 Demo
 ----
 

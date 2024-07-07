@@ -18,6 +18,7 @@ from .definition import (
     key_index_template,
     key_title_spec,
     key_version_spec,
+    key_security,
 )
 from .struct import OpenApiSpec3, OperationObject, PathItem
 from .typing import is_status_code_type
@@ -96,6 +97,7 @@ def _add_http_method_to_oas(
     if description:
         oas_operation.description = docstring_parser.operation(description)
         oas_operation.tags = docstring_parser.tags(description)
+        oas_operation.security = docstring_parser.security(description)
         oas_operation.deprecated = docstring_parser.deprecated(description)
         status_code_descriptions = docstring_parser.status_code(description)
     else:
@@ -147,6 +149,7 @@ def generate_oas(
     apps: List[Application],
     version_spec: Optional[str] = None,
     title_spec: Optional[str] = None,
+    security: Optional[dict] = None,
 ) -> dict:
     """
     Generate and return Open Api Specification from PydanticView in application.
@@ -174,6 +177,9 @@ def generate_oas(
                 else:
                     _add_http_method_to_oas(oas, path, resource_route.method, view)
 
+    if security:
+        oas.components.security_schemes.update(security)
+
     return oas.spec
 
 
@@ -194,7 +200,8 @@ async def get_oas(request):
     apps = _app_key_or_string(request.app, key_apps_to_expose, "apps to expose")
     version_spec = _app_key_or_string(request.app, key_version_spec, "version spec")
     title_spec = _app_key_or_string(request.app, key_title_spec, "title spec")
-    return json_response(generate_oas(apps, version_spec, title_spec))
+    security = _app_key_or_string(request.app, key_security, "security")
+    return json_response(generate_oas(apps, version_spec, title_spec, security))
 
 
 async def oas_ui(request):
