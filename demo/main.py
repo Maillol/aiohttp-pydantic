@@ -2,8 +2,8 @@ from aiohttp.web import Application, json_response, middleware
 
 from aiohttp_pydantic import oas
 
-from model import Model
-from view import PetCollectionView, PetItemView
+from .model import Model
+from .view import PetCollectionView, PetItemView
 
 
 @middleware

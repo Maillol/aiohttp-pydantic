@@ -79,7 +79,7 @@ def _dedent_under_first_line(text: str) -> str:
     return text
 
 
-def status_code(docstring: str) -> Dict[int, str]:
+def status_code(docstring: str) -> Dict[str, str]:
     """
     Extract the "Status Code:" block of the docstring.
     """
@@ -92,7 +92,7 @@ def status_code(docstring: str) -> Dict[int, str]:
             i_block = _i_extract_block(iterator)
             next(i_block)
             for line_of_block in i_block:
-                if re.search("^\\s*\\d{3}\\s*:", line_of_block):
+                if re.search("^\\s*(\\d{3}|default)\\s*:", line_of_block):
                     if lines:
                         blocks.append("\n".join(lines))
                         lines = []
@@ -101,7 +101,7 @@ def status_code(docstring: str) -> Dict[int, str]:
                 blocks.append("\n".join(lines))
 
             return {
-                int(status.strip()): _dedent_under_first_line(desc.strip())
+                status.strip(): _dedent_under_first_line(desc.strip())
                 for status, desc in (block.split(":", 1) for block in blocks)
             }
     return {}

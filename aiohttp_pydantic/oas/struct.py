@@ -157,7 +157,7 @@ class Responses:
         self._spec = spec.setdefault("responses", {})
 
     def __getitem__(self, status_code: Union[int, str]) -> Response:
-        if not 100 <= int(status_code) < 600:
+        if status_code != "default" and not 100 <= int(status_code) < 600:
             raise ValueError("status_code must be between 100 and 599")
 
         spec = self._spec.setdefault(str(status_code), {})
