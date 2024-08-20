@@ -134,9 +134,13 @@ def _add_http_method_to_oas(
             else:
                 oas_operation.parameters[i].required = True
 
-            oas_operation.parameters[i].schema = type(name, (RootModel,), attrs).model_json_schema(
+            attr_schema = type(name, (RootModel,), attrs).model_json_schema(
                 ref_template="#/components/schemas/{model}"
             )
+            if def_sub_schemas := attr_schema.pop("$defs", None):
+                oas.components.schemas.update(def_sub_schemas)
+            oas_operation.parameters[i].schema = attr_schema
+
 
     return_type = get_type_hints(handler).get("return")
     if return_type is not None:
