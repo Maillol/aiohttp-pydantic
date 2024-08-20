@@ -57,20 +57,24 @@ class _OASResponseBuilder:
 
     def _handle_status_code_type(self, obj):
         if is_status_code_type(typing.get_origin(obj)):
-            status_code = typing.get_origin(obj).__name__[1:]
+            status_code = typing.get_origin(obj).__name__
+            if status_code != "default":
+                status_code = status_code[1:]
             self._oas_operation.responses[status_code].content = {
                 "application/json": {
                     "schema": self._handle_list(typing.get_args(obj)[0])
                 }
             }
-            desc = self._status_code_descriptions.get(int(status_code))
+            desc = self._status_code_descriptions.get(status_code)
             if desc:
                 self._oas_operation.responses[status_code].description = desc
 
         elif is_status_code_type(obj):
-            status_code = obj.__name__[1:]
+            status_code = obj.__name__
+            if status_code != "default":
+                status_code = status_code[1:]
             self._oas_operation.responses[status_code].content = {}
-            desc = self._status_code_descriptions.get(int(status_code))
+            desc = self._status_code_descriptions.get(status_code)
             if desc:
                 self._oas_operation.responses[status_code].description = desc
 
