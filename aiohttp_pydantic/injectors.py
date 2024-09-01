@@ -1,9 +1,10 @@
 import abc
 import typing
+import sys
 from inspect import signature, getmro
 from json.decoder import JSONDecodeError
 from types import SimpleNamespace
-from typing import Callable, Tuple, Literal, Type, get_type_hints
+from typing import Callable, Tuple, Literal, Type
 
 from aiohttp.web_exceptions import HTTPBadRequest
 from aiohttp.web_request import BaseRequest
@@ -13,6 +14,12 @@ from pydantic import BaseModel
 from .utils import is_pydantic_base_model, robuste_issubclass
 
 CONTEXT = Literal["body", "headers", "path", "query string"]
+
+if sys.version_info >= (3, 9):
+    from typing import get_type_hints
+else:
+    # Backport: Added include_extras parameter as part of PEP: 593.
+    from typing_extensions import get_type_hints
 
 
 class AbstractInjector(metaclass=abc.ABCMeta):

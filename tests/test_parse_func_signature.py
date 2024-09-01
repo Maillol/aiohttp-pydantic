@@ -1,10 +1,25 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import Base64Str, BaseModel, PositiveInt
 
 from aiohttp_pydantic.injectors import _parse_func_signature
+
+try:
+    from typing import Annotated
+except ImportError:
+    from typing_extensions import Annotated
+
+
+@dataclass
+class ValueRange:
+    lo: int
+    hi: int
+
+
+CustomAnnotatedType = Annotated[int, ValueRange(-5, 5)]
 
 
 class User(BaseModel):
@@ -35,6 +50,11 @@ def test_parse_func_signature():
         pass
 
     def path_qs_and_header(self, id: str, /, page: int, *, auth: UUID):
+        pass
+
+    def path_qs_and_header_with_annotated(
+        self, id: PositiveInt, /, page: CustomAnnotatedType, *, auth: Base64Str
+    ):
         pass
 
     def path_body_qs_and_header(self, id: str, /, user: User, page: int, *, auth: UUID):
@@ -72,6 +92,15 @@ def test_parse_func_signature():
         {"auth": UUID},
         {},
     )
+
+    assert _parse_func_signature(path_qs_and_header_with_annotated) == (
+        {"id": PositiveInt},
+        {},
+        {"page": CustomAnnotatedType},
+        {"auth": Base64Str},
+        {},
+    )
+
     assert _parse_func_signature(path_body_qs_and_header) == (
         {"id": str},
         {"user": User},
