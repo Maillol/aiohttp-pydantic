@@ -3,7 +3,7 @@ from typing import List, Optional, Union
 from aiohttp import web
 
 from aiohttp_pydantic import PydanticView
-from aiohttp_pydantic.oas.typing import r200, r201, r204, r404
+from aiohttp_pydantic.oas.typing import r200, r201, r204, r404, default
 
 from .model import Error, Pet
 
@@ -25,6 +25,8 @@ class PetCollectionView(PydanticView):
         """
         Add a new pet to the store
 
+        Security: APIKeyHeader
+
         Status Codes:
             201: Successful operation
         """
@@ -33,13 +35,14 @@ class PetCollectionView(PydanticView):
 
 
 class PetItemView(PydanticView):
-    async def get(self, id: int, /) -> Union[r200[Pet], r404[Error]]:
+    async def get(self, id: int, /) -> Union[r200[Pet], r404[Error], default[Error]]:
         """
         Find a pet by ID
 
         Status Codes:
             200: Successful operation
             404: Pet not found
+            default: Unexpected error
         """
         pet = self.request.app["model"].find_pet(id)
         return web.json_response(pet.dict())

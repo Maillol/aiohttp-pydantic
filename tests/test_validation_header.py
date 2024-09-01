@@ -9,6 +9,8 @@ from aiohttp import web
 
 from aiohttp_pydantic import PydanticView
 from aiohttp_pydantic.injectors import Group
+from packaging.version import Version
+import pydantic_core
 
 
 class JSONEncoder(json.JSONEncoder):
@@ -90,6 +92,13 @@ async def test_get_article_with_wrong_header_type_should_return_an_error_message
 
     client = await aiohttp_client(app)
     resp = await client.get("/article", headers={"signature_expired": "foo"})
+    if Version(pydantic_core.__version__) >= Version("2.15.0"):
+        expected_type = "datetime_from_date_parsing"
+        expected_msg = "Input should be a valid datetime or date, input is too short"
+    else:
+        expected_type = "datetime_parsing"
+        expected_msg = "Input should be a valid datetime, input is too short"
+
     assert resp.status == 400
     assert resp.content_type == "application/json"
     assert await resp.json() == [
@@ -98,8 +107,8 @@ async def test_get_article_with_wrong_header_type_should_return_an_error_message
             "input": "foo",
             "ctx": {"error": "input is too short"},
             "loc": ["signature_expired"],
-            "msg": "Input should be a valid datetime or date, input is too short",
-            "type": "datetime_from_date_parsing",
+            "msg": expected_msg,
+            "type": expected_type,
         }
     ]
 
@@ -146,7 +155,7 @@ async def test_wrong_value_to_header_defined_with_str_enum(aiohttp_client, event
             {
                 "ctx": {"expected": "'UMT' or 'MGRS'"},
                 "in": "headers",
-                'input': 'WGS84',
+                "input": "WGS84",
                 "loc": ["format"],
                 "msg": "Input should be 'UMT' or 'MGRS'",
                 "type": "enum",
@@ -158,7 +167,9 @@ async def test_wrong_value_to_header_defined_with_str_enum(aiohttp_client, event
     assert resp.content_type == "application/json"
 
 
-async def test_correct_value_to_header_defined_with_str_enum(aiohttp_client, event_loop):
+async def test_correct_value_to_header_defined_with_str_enum(
+    aiohttp_client, event_loop
+):
     app = web.Application()
     app.router.add_view("/coord", ViewWithEnumType)
 

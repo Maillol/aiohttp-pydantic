@@ -133,9 +133,11 @@ class QueryGetter(AbstractInjector):
         the multiple values are sent (i.e ?foo=1&foo=2)
         """
         return {
-            key: values
-            if len(values := query.getall(key)) > 1 or key in self._is_multiple
-            else value
+            key: (
+                values
+                if len(values := query.getall(key)) > 1 or key in self._is_multiple
+                else value
+            )
             for key, value in query.items()
         }
 
@@ -191,6 +193,9 @@ class Group(SimpleNamespace):
     """
 
 
+_NOT_SET = object()
+
+
 def _get_group_signature(cls) -> Tuple[dict, dict]:
     """
     Analyse Group subclass annotations and return them with default values.
@@ -205,7 +210,7 @@ def _get_group_signature(cls) -> Tuple[dict, dict]:
         # Use __annotations__ to know if an attribute is
         # overwrite to remove the default value.
         for attr_name, type_ in base.__annotations__.items():
-            if (default := attrs.get(attr_name)) is None:
+            if (default := attrs.get(attr_name, _NOT_SET)) is _NOT_SET:
                 defaults.pop(attr_name, None)
             else:
                 defaults[attr_name] = default
@@ -226,7 +231,7 @@ def _parse_func_signature(
         1 - argument will be set from the request body.
         2 - argument will be set from the query string.
         3 - argument will be set from the HTTP headers.
-        4 - Default value for each parameters
+        4 - Default value for each parameter
     """
 
     path_args = {}

@@ -17,7 +17,7 @@ from typing import Protocol, TypeVar
 
 RespContents = TypeVar("RespContents", covariant=True)
 
-_status_code = frozenset(f"r{code}" for code in range(100, 600))
+_status_code = frozenset([f"r{code}" for code in range(100, 600)] + ["default"])
 
 
 @lru_cache(maxsize=len(_status_code))

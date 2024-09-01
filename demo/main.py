@@ -15,7 +15,7 @@ async def pet_not_found_to_404(request, handler):
 
 
 app = Application(middlewares=[pet_not_found_to_404])
-oas.setup(app, version_spec="1.0.1", title_spec="My App")
+oas.setup(app, version_spec="1.0.1", title_spec="My App", security={"APIKeyHeader": {"type": "apiKey", "in": "header", "name": "Authorization"}})
 
 app["model"] = Model()
 app.router.add_view("/pets", PetCollectionView)

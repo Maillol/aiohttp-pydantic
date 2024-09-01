@@ -2,7 +2,7 @@
 Utility to write Open Api Specifications using the Python language.
 """
 
-from typing import Union, List
+from typing import Union, List, Optional
 
 
 class Info:
@@ -157,7 +157,7 @@ class Responses:
         self._spec = spec.setdefault("responses", {})
 
     def __getitem__(self, status_code: Union[int, str]) -> Response:
-        if not 100 <= int(status_code) < 600:
+        if status_code != "default" and not 100 <= int(status_code) < 600:
             raise ValueError("status_code must be between 100 and 599")
 
         spec = self._spec.setdefault(str(status_code), {})
@@ -175,6 +175,15 @@ class OperationObject:
     @summary.setter
     def summary(self, summary: str):
         self._spec["summary"] = summary
+
+    @property
+    def security(self) -> List[dict]:
+        return self._spec.get("security", [])
+
+    @security.setter
+    def security(self, security: Optional[List[dict]]):
+        if security is not None:
+            self._spec["security"] = security
 
     @property
     def description(self) -> str:
@@ -321,6 +330,10 @@ class Components:
     @property
     def schemas(self) -> dict:
         return self._spec.setdefault("schemas", {})
+
+    @property
+    def security_schemes(self) -> dict:
+        return self._spec.setdefault("securitySchemes", {})
 
 
 class OpenApiSpec3:
