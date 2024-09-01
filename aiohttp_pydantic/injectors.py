@@ -230,7 +230,7 @@ def _get_group_signature(cls) -> Tuple[dict, dict]:
 
 
 def _parse_func_signature(
-    func: Callable, unpack_group: bool = False
+    func: Callable, unpack_group: bool = False, ignore_params=("self",)
 ) -> Tuple[dict, dict, dict, dict, dict]:
     """
     Analyse function signature and returns 5-tuple:
@@ -250,7 +250,7 @@ def _parse_func_signature(
     annotations = get_type_hints(func, include_extras=True)
     for param_name, param_spec in signature(func).parameters.items():
 
-        if param_name == "self":
+        if param_name in ignore_params:
             continue
 
         if param_spec.annotation == param_spec.empty:
