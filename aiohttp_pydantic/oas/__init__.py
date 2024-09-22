@@ -12,6 +12,7 @@ from .definition import (
     key_version_spec,
     key_title_spec,
     key_security,
+    key_display_configurations,
 )
 
 
@@ -47,7 +48,7 @@ def setup(
         oas_app[key_version_spec] = version_spec
         oas_app[key_title_spec] = title_spec
         oas_app[key_security] = security
-        oas_app["display_configurations"] = display_configurations
+        oas_app[key_display_configurations] = json.dumps(display_configurations)
 
         oas_app.router.add_get("/spec", get_oas, name="spec")
         oas_app.router.add_static("/static", swagger_ui_path, name="static")

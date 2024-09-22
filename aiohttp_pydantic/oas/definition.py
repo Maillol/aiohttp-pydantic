@@ -24,6 +24,7 @@ key_index_template = web.AppKey("index template", str)
 key_version_spec = web.AppKey("version spec", str)
 key_title_spec = web.AppKey("title spec", str)
 key_security = web.AppKey("security", dict)
+key_display_configurations = web.AppKey("key_display_configurations", dict)
 
 __all__ = [
     key_apps_to_expose,
@@ -31,4 +32,5 @@ __all__ = [
     key_version_spec,
     key_title_spec,
     key_security,
+    key_display_configurations
 ]

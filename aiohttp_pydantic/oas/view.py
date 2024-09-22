@@ -20,6 +20,7 @@ from .definition import (
     key_title_spec,
     key_version_spec,
     key_security,
+    key_display_configurations
 )
 from .struct import OpenApiSpec3, OperationObject, PathItem
 from .typing import is_status_code_type
@@ -253,7 +254,7 @@ async def oas_ui(request):
             {
                 "openapi_spec_url": request.app.router['spec'].canonical,
                 "static_url": request.app.router['static'].canonical,
-                "display_configurations": request.app["display_configurations"],
+                "display_configurations": request.app[key_display_configurations],
             }
         ),
         content_type="text/html",
