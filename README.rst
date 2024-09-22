@@ -107,6 +107,47 @@ Example:
     $ curl -H "Content-Type: application/json" -X POST http://127.0.0.1:8080/article --data '{"name": "toto", "nb_page": "3"}'
     {"name": "toto", "number_of_page": 3}
 
+
+Example using view function handler
+-----------------------------------
+
+.. code-block:: python3
+
+
+    from typing import Optional
+
+    from aiohttp import web
+    from aiohttp_pydantic.decorator import inject_params
+    from pydantic import BaseModel
+
+
+    # Use pydantic BaseModel to validate request body
+    class ArticleModel(BaseModel):
+        name: str
+        nb_page: Optional[int]
+
+
+    # Create your function decorated by 'inject_params' and add annotations.
+    @inject_params
+    async def post(article: ArticleModel):
+        return web.json_response({'name': article.name,
+                                  'number_of_page': article.nb_page})
+
+
+    # If you need request
+    @inject_params.and_request
+    async def get(request, with_comments: bool = False):
+        request.app["logger"]("OK")
+        return web.json_response({'with_comments': with_comments})
+
+
+    app = web.Application()
+    app["logger"] = print
+    app.router.add_post('/article', post)
+    app.router.add_get('/article', get)
+    web.run_app(app)
+
+
 API:
 ----
 
@@ -198,6 +239,7 @@ To declare a HTTP headers parameter, you must declare your argument as a `keywor
 .. _positional-only parameters: https://www.python.org/dev/peps/pep-0570/
 .. _pydantic Model: https://pydantic-docs.helpmanual.io/usage/models/
 .. _keyword-only argument: https://www.python.org/dev/peps/pep-3102/
+
 
 Add route to generate Open Api Specification (OAS)
 --------------------------------------------------
@@ -411,8 +453,53 @@ You can redefine the on_validation_error hook in your PydanticView
             return json_response(data=errors, status=400)
 
 
+
+If you use function based view:
+
+.. code-block:: python3
+
+
+    async def custom_error(exception: ValidationError,
+                           context: str):
+        errors = exception.errors()
+        for error in errors:
+            error["in"] = context  # context is "body", "headers", "path" or "query string"
+            error["custom"] = "your custom field ..."
+        return json_response(data=errors, status=400)
+
+
+    @inject_params(on_validation_error=custom_error)
+    async def get(with_comments: bool = False):
+        ...
+
+    @inject_params.and_request(on_validation_error=custom_error)
+    async def get(request, with_comments: bool = False):
+        ...
+
+
+A tip to use the same error handling on each view
+
+
+.. code-block:: python3
+
+    inject_params = inject_params(on_validation_error=custom_error)
+
+
+    @inject_params
+    async def post(article: ArticleModel):
+        return web.json_response({'name': article.name,
+                                  'number_of_page': article.nb_page})
+
+
+    @inject_params.and_request
+    async def get(request, with_comments: bool = False):
+        return web.json_response({'with_comments': with_comments})
+
+
+
+
 Add security to the endpoints
---------------------------------------------------
+-----------------------------
 
 aiohttp_pydantic provides a basic way to add security to the endpoints. You can define the security
 on the setup level using the *security* parameter and then mark view methods that will require this security schema.

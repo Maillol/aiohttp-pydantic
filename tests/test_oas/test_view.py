@@ -1,85 +1,18 @@
 from __future__ import annotations
 
-from enum import Enum
-from typing import List, Optional, Union, Literal
-from uuid import UUID
+from typing import List
 
 import pytest
 from aiohttp import web
 from packaging.version import Version
-from pydantic.main import BaseModel
 import pydantic_core
 
 from aiohttp_pydantic import PydanticView, oas
 from aiohttp_pydantic.injectors import Group
-from aiohttp_pydantic.oas.typing import r200, r201, r204, r404
-from aiohttp_pydantic.oas.view import generate_oas
-
-
-class Color(str, Enum):
-    RED = "red"
-    GREEN = "green"
-    PINK = "pink"
-
-
-class Toy(BaseModel):
-    name: str
-    color: Color
-
-
-class Pet(BaseModel):
-    id: int
-    name: str
-    toys: List[Toy]
-
-
-class PetCollectionView(PydanticView):
-    async def get(
-        self, format: str, name: Optional[str] = None, *, promo: Optional[UUID] = None
-    ) -> r200[List[Pet]]:
-        """
-        Get a list of pets
-
-        Security: APIKeyHeader
-        Tags: pet
-        Status Codes:
-          200: Successful operation
-        """
-        return web.json_response()
-
-    async def post(self, pet: Pet) -> r201[Pet]:
-        """Create a Pet"""
-        return web.json_response()
-
-
-class PetItemView(PydanticView):
-    async def get(
-        self,
-        id: int,
-        /,
-        size: Union[int, Literal["x", "l", "s"]],
-        day: Union[int, Literal["now"]] = "now",
-    ) -> Union[r200[Pet], r404]:
-        return web.json_response()
-
-    async def put(self, id: int, /, pet: Pet):
-        return web.json_response()
-
-    async def delete(self, id: int, /) -> r204:
-        """
-        Status Code:
-          204: Empty but OK
-        """
-        return web.json_response()
-
-
-class ViewResponseReturnASimpleType(PydanticView):
-    async def get(self) -> r200[int]:
-        """
-        Status Codes:
-          200: The new number
-        """
-        return web.json_response()
+from aiohttp_pydantic.oas.typing import r200
+import aiohttp_pydantic.oas.view
+from .bench.model import Pet
+from .bench import decorated_handler, pydantic_view, decorated_handler_with_request, view
 
 
 async def ensure_content_durability(client):
@@ -100,18 +33,29 @@ async def ensure_content_durability(client):
     return content_2
 
 
-@pytest.fixture
-async def generated_oas(aiohttp_client, event_loop) -> web.Application:
-    app = web.Application()
-    app.router.add_view("/pets", PetCollectionView)
-    app.router.add_view("/pets/{id}", PetItemView)
-    app.router.add_view("/simple-type", ViewResponseReturnASimpleType)
-    oas.setup(app)
+def build_app_and_generate_oas_factory(app_builder):
+    async def build_app_and_generate_oas(aiohttp_client) -> web.Application:
+        app = app_builder()
+        return await ensure_content_durability(await aiohttp_client(app))
 
-    return await ensure_content_durability(await aiohttp_client(app))
+    return build_app_and_generate_oas
 
 
-async def test_generated_oas_should_have_components_schemas(generated_oas):
+generate_oas_spec = [
+    build_app_and_generate_oas_factory(view.build_app),
+    build_app_and_generate_oas_factory(pydantic_view.build_app),
+    build_app_and_generate_oas_factory(decorated_handler.build_app),
+    build_app_and_generate_oas_factory(decorated_handler_with_request.build_app),
+]
+
+
+@pytest.mark.parametrize(
+    "generate_oas",
+    generate_oas_spec,
+    ids=["aiohttp view", "pydantic view", "decorated handler", "decorated handler with request"],
+)
+async def test_generated_oas_should_have_components_schemas(generate_oas, aiohttp_client, event_loop):
+    generated_oas = await generate_oas(aiohttp_client)
     assert generated_oas["components"]["schemas"] == {
         "Color": {
             "enum": ["red", "green", "pink"],
@@ -130,11 +74,23 @@ async def test_generated_oas_should_have_components_schemas(generated_oas):
     }
 
 
-async def test_generated_oas_should_have_pets_paths(generated_oas):
+@pytest.mark.parametrize(
+    "generate_oas",
+    generate_oas_spec,
+    ids=["aiohttp view", "pydantic view", "decorated handler", "decorated handler with request"],
+)
+async def test_generated_oas_should_have_pets_paths(generate_oas, aiohttp_client, event_loop):
+    generated_oas = await generate_oas(aiohttp_client)
     assert "/pets" in generated_oas["paths"]
 
 
-async def test_pets_route_should_have_get_method(generated_oas):
+@pytest.mark.parametrize(
+    "generate_oas",
+    generate_oas_spec,
+    ids=["aiohttp view", "pydantic view", "decorated handler", "decorated handler with request"],
+)
+async def test_pets_route_should_have_get_method(generate_oas, aiohttp_client, event_loop):
+    generated_oas = await generate_oas(aiohttp_client)
     assert generated_oas["paths"]["/pets"]["get"] == {
         "description": "Get a list of pets",
         "tags": ["pet"],
@@ -200,7 +156,13 @@ async def test_pets_route_should_have_get_method(generated_oas):
     }
 
 
-async def test_pets_route_should_have_post_method(generated_oas):
+@pytest.mark.parametrize(
+    "generate_oas",
+    generate_oas_spec,
+    ids=["aiohttp view", "pydantic view", "decorated handler", "decorated handler with request"],
+)
+async def test_pets_route_should_have_post_method(generate_oas, aiohttp_client, event_loop):
+    generated_oas = await generate_oas(aiohttp_client)
     assert generated_oas["paths"]["/pets"]["post"] == {
         "description": "Create a Pet",
         "requestBody": {
@@ -249,11 +211,23 @@ async def test_pets_route_should_have_post_method(generated_oas):
     }
 
 
-async def test_generated_oas_should_have_pets_id_paths(generated_oas):
+@pytest.mark.parametrize(
+    "generate_oas",
+    generate_oas_spec,
+    ids=["aiohttp view", "pydantic view", "decorated handler", "decorated handler with request"],
+)
+async def test_generated_oas_should_have_pets_id_paths(generate_oas, aiohttp_client, event_loop):
+    generated_oas = await generate_oas(aiohttp_client)
     assert "/pets/{id}" in generated_oas["paths"]
 
 
-async def test_pets_id_route_should_have_delete_method(generated_oas):
+@pytest.mark.parametrize(
+    "generate_oas",
+    generate_oas_spec,
+    ids=["aiohttp view", "pydantic view", "decorated handler", "decorated handler with request"],
+)
+async def test_pets_id_route_should_have_delete_method(generate_oas, aiohttp_client, event_loop):
+    generated_oas = await generate_oas(aiohttp_client)
     assert generated_oas["paths"]["/pets/{id}"]["delete"] == {
         "description": "",
         "parameters": [
@@ -268,7 +242,13 @@ async def test_pets_id_route_should_have_delete_method(generated_oas):
     }
 
 
-async def test_pets_id_route_should_have_get_method(generated_oas):
+@pytest.mark.parametrize(
+    "generate_oas",
+    generate_oas_spec,
+    ids=["aiohttp view", "pydantic view", "decorated handler", "decorated handler with request"],
+)
+async def test_pets_id_route_should_have_get_method(generate_oas, aiohttp_client, event_loop):
+    generated_oas = await generate_oas(aiohttp_client)
     if Version(pydantic_core.__version__) >= Version("2.15.0"):
         now_desc = {"type": "string", "const": "now", "enum": ["now"]}
     else:
@@ -332,7 +312,13 @@ async def test_pets_id_route_should_have_get_method(generated_oas):
     }
 
 
-async def test_pets_id_route_should_have_put_method(generated_oas):
+@pytest.mark.parametrize(
+    "generate_oas",
+    generate_oas_spec,
+    ids=["aiohttp view", "pydantic view", "decorated handler", "decorated handler with request"],
+)
+async def test_pets_id_route_should_have_put_method(generate_oas, aiohttp_client, event_loop):
+    generated_oas = await generate_oas(aiohttp_client)
     assert generated_oas["paths"]["/pets/{id}"]["put"] == {
         "parameters": [
             {
@@ -365,7 +351,13 @@ async def test_pets_id_route_should_have_put_method(generated_oas):
     }
 
 
-async def test_simple_type_route_should_have_get_method(generated_oas):
+@pytest.mark.parametrize(
+    "generate_oas",
+    generate_oas_spec,
+    ids=["aiohttp view", "pydantic view", "decorated handler", "decorated handler with request"],
+)
+async def test_simple_type_route_should_have_get_method(generate_oas, aiohttp_client, event_loop):
+    generated_oas = await generate_oas(aiohttp_client)
     assert generated_oas["paths"]["/simple-type"]["get"] == {
         "description": "",
         "responses": {
@@ -379,7 +371,7 @@ async def test_simple_type_route_should_have_get_method(generated_oas):
 
 async def test_generated_view_info_default():
     apps = (web.Application(),)
-    spec = generate_oas(apps)
+    spec = aiohttp_pydantic.oas.view.generate_oas(apps)
 
     assert spec == {
         "info": {"title": "Aiohttp pydantic application", "version": "1.0.0"},
@@ -389,7 +381,7 @@ async def test_generated_view_info_default():
 
 async def test_generated_view_info_as_version():
     apps = (web.Application(),)
-    spec = generate_oas(apps, version_spec="test version")
+    spec = aiohttp_pydantic.oas.view.generate_oas(apps, version_spec="test version")
 
     assert spec == {
         "info": {"title": "Aiohttp pydantic application", "version": "test version"},
@@ -399,7 +391,7 @@ async def test_generated_view_info_as_version():
 
 async def test_generated_view_info_as_title():
     apps = (web.Application(),)
-    spec = generate_oas(apps, title_spec="test title")
+    spec = aiohttp_pydantic.oas.view.generate_oas(apps, title_spec="test title")
 
     assert spec == {
         "info": {"title": "test title", "version": "1.0.0"},
@@ -429,6 +421,6 @@ async def test_use_parameters_group_should_not_impact_the_oas(aiohttp_client):
     app2.router.add_view("/pets", PetCollectionView2)
     oas.setup(app2)
 
-    assert await ensure_content_durability(
-        await aiohttp_client(app1)
-    ) == await ensure_content_durability(await aiohttp_client(app2))
+    assert await ensure_content_durability(await aiohttp_client(app1)) == await ensure_content_durability(
+        await aiohttp_client(app2)
+    )
