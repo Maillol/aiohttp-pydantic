@@ -199,7 +199,7 @@ def generate_oas(
                             handler = getattr(view, method_name.lower())
                             _add_http_method_to_oas(oas, path, method_name, handler)
                     else:
-                        handler = getattr(view, method_name.lower())
+                        handler = getattr(view, resource_route.method.lower())
                         _add_http_method_to_oas(oas, path, resource_route.method, handler)
                 elif _is_aiohttp_view(resource_route.handler):
                     view: View = resource_route.handler
