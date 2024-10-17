@@ -22,7 +22,7 @@ async def json_response_error(
     errors = exception.errors(include_url=False)
     for error in errors:
         error["in"] = context
-        if "ctx" in error:
+        if "ctx" in error and "error" in error["ctx"]:
             error["ctx"]["error"] = str(error["ctx"]["error"])
     return json_response(data=errors, status=400)
 
