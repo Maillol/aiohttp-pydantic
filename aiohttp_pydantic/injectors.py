@@ -75,7 +75,7 @@ class BodyGetter(AbstractInjector):
 
     def __init__(self, args_spec: dict, default_values: dict):
         self.arg_name, self.model = next(iter(args_spec.items()))
-        self._expect_object = self.model.model_json_schema()["type"] == "object"
+        self._expect_object = self.model.model_json_schema().get("type") == "object"
 
     async def inject(self, request: BaseRequest, args_view: list, kwargs_view: dict):
         try:
