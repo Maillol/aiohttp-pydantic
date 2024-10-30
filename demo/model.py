@@ -1,17 +1,16 @@
 from pydantic import BaseModel
-from typing import List
 
 
 class Friend(BaseModel):
     name: str
-    age: str
+    age: int
 
 
 class Pet(BaseModel):
     id: int
     name: str
     age: int
-    friends: Friend
+    friends: list[Friend]
 
 
 class Error(BaseModel):

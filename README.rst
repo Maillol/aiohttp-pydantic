@@ -241,6 +241,56 @@ To declare a HTTP headers parameter, you must declare your argument as a `keywor
 .. _keyword-only argument: https://www.python.org/dev/peps/pep-3102/
 
 
+File Upload
+-----------
+
+You can receive files in addition to Pydantic data in your views. Here’s an example of how to use it:
+Usage Example
+
+Suppose you want to create an API that accepts a book (with a title and a number of pages) as well as two files
+representing the pages of the book. Here’s how you can do it:
+
+.. code-block:: python3
+
+    from aiohttp import web
+    from aiohttp_pydantic import PydanticView
+    from aiohttp_pydantic.uploaded_file import UploadedFile
+    from pydantic import BaseModel
+
+    class BookModel(BaseModel):
+        title: str
+        nb_page: int
+
+    class BookAndUploadFileView(PydanticView):
+        async def post(self, book: BookModel, page_1: UploadedFile, page_2: UploadedFile):
+            content_1 = (await page_1.read()).decode("utf-8")
+            content_2 = (await page_2.read()).decode("utf-8")
+            return web.json_response(
+                {"book": book.model_dump(), "content_1": content_1, "content_2": content_2},
+                status=201,
+            )
+
+Implementation Details
+~~~~~~~~~~~~~~~~~~~~~~
+
+Files are represented by instances of UploadedFile, which wrap an `aiohttp.BodyPartReader`_.
+UploadedFile exposes the read() and read_chunk() methods, allowing you to read the content of uploaded files asynchronously. You can use read() to get the complete content or read_chunk() to read chunks of data at a time.
+
+Constraints to Consider
+~~~~~~~~~~~~~~~~~~~~~~~
+
+1 - Argument Order:  If you use both Pydantic models and UploadedFile, you must always define BaseModel
+type arguments before UploadedFile type arguments. This ensures proper processing of the data.
+
+2 - File Reading Order: UploadedFile instances must be read in the order they are declared in the method.
+Since files are not pre-loaded in memory or on disk, it is important to respect this order.
+If the reading order is not respected, a MultipartReadingError is raised.
+
+
+.. _aiohttp.BodyPartReader: https://docs.aiohttp.org/en/stable/multipart_reference.html#aiohttp.BodyPartReader
+
+
+
 Add route to generate Open Api Specification (OAS)
 --------------------------------------------------
 
