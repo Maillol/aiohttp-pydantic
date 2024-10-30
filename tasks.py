@@ -151,7 +151,7 @@ def prepare_ci_env(c):
         c.run(f"dist_venv/bin/python -I -c 'import {package_name}'")
 
     title("Installing CI tools", "=")
-    c.run("dist_venv/bin/python -m pip install -r requirements/ci.txt")
+    c.run("dist_venv/bin/python -m pip install .[ci]")
 
 
 @task(prepare_ci_env, check_readme, call(test, isolate=True), klass=Task_)
