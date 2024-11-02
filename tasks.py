@@ -135,10 +135,10 @@ def prepare_ci_env(c):
     c.run("python -m venv --clear dist_venv")
     activate_venv(c, "dist_venv")
 
-    c.run("dist_venv/bin/python -m pip install -U setuptools wheel pip")
+    c.run("dist_venv/bin/python -m pip install -U setuptools wheel pip build")
 
     title("Building wheel", "=")
-    c.run("dist_venv/bin/python setup.py build bdist_wheel")
+    c.run("dist_venv/bin/python -m build --wheel")
 
     title("Installing wheel", "=")
     package_version = read_configuration("./setup.cfg")["metadata"]["version"]
