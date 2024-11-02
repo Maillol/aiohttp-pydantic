@@ -10,7 +10,8 @@ from aiohttp.web_app import Application
 from pydantic import RootModel
 
 from ..injectors import _parse_func_signature
-from ..utils import is_pydantic_base_model
+from ..uploaded_file import UploadedFile
+from ..utils import is_pydantic_base_model, robuste_issubclass
 from ..view import PydanticView, is_pydantic_view
 from . import docstring_parser
 from .definition import (
@@ -114,17 +115,53 @@ def _add_http_method_to_oas(
         status_code_descriptions = {}
 
     if body_args:
-        body_schema = (
-            next(iter(body_args.values()))
-            .model_json_schema(ref_template="#/components/schemas/{model}")
-            .copy()
-        )
-        if def_sub_schemas := body_schema.pop("$defs", None):
-            oas.components.schemas.update(def_sub_schemas)
+        multipart = any(robuste_issubclass(type_, UploadedFile) for type_ in body_args.values())
+        if multipart:
+            # requestBody:
+            #   content:
+            #     multipart/form-data:
+            #       schema:
+            #         type: object
+            #         properties:
+            #           orderId:
+            #             type: integer
+            #           userId:
+            #             type: integer
+            #           fileName:
+            #             type: string
+            #             format: binary
 
-        oas_operation.request_body.content = {
-            "application/json": {"schema": body_schema}
-        }
+            properties = {}
+            for name, type_ in body_args.items():
+                if robuste_issubclass(type_, UploadedFile):
+                    properties[name] = {"type": "string", "format": "binary"}
+                else:
+                    body_schema = type_.model_json_schema(ref_template="#/components/schemas/{model}").copy()
+                    properties[name] = body_schema
+                    if def_sub_schemas := body_schema.pop("$defs", None):
+                        oas.components.schemas.update(def_sub_schemas)
+
+            oas_operation.request_body.content = {
+                "multipart/form-data": {
+                    "schema": {
+                        "type": "object",
+                        "properties": properties
+                    }
+                }
+            }
+
+        else:
+            body_schema = (
+                next(iter(body_args.values()))
+                .model_json_schema(ref_template="#/components/schemas/{model}")
+                .copy()
+            )
+            if def_sub_schemas := body_schema.pop("$defs", None):
+                oas.components.schemas.update(def_sub_schemas)
+
+            oas_operation.request_body.content = {
+                "application/json": {"schema": body_schema}
+            }
 
     indexes = count()
     for args_location, args in (
