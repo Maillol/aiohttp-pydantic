@@ -4,6 +4,7 @@ from aiohttp import web
 
 from aiohttp_pydantic import PydanticView
 from aiohttp_pydantic.oas.typing import r200, r201, r204, r404, default
+from aiohttp_pydantic.wsapp import  PUBLISHER
 
 from .model import Error, Pet
 
@@ -31,6 +32,7 @@ class PetCollectionView(PydanticView):
             201: Successful operation
         """
         self.request.app["model"].add_pet(pet)
+        await self.request.app[PUBLISHER].publish(pet)
         return web.json_response(pet.model_dump())
 
 

@@ -1,0 +1,50 @@
+
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    </head>
+    <body>
+        <script>
+        console.log(mqtt);
+        const url = 'ws://127.0.0.1:8080/ws'
+            const options = {
+              // Clean session
+              clean: true,
+              connectTimeout: 4000,
+              // Authentication
+              clientId: 'abc12345',
+              username: 'username_test',
+              // password: 'password_test',
+              // protocolVersion: 4,
+              // will: {
+              //        qos: 2,
+              //        topic: 'will/topic',
+              //        payload: 'client gone offline',
+              // },
+              }
+            const client  = mqtt.connect(url, options)
+            client.on('connect', function () {
+              console.log('Connected')
+              // Subscribe to a topic
+              client.subscribe('new-pet-available', function (err) {
+                if (!err) {
+                  // Publish a message to a topic
+                  client.publish('pony-is-fun', 'Hello mqtt')
+                }
+              })
+            });
+
+            client.on('error', function (err) {
+              console.error(err);
+            });
+
+            // Receive messages
+            client.on('message', function (topic, message) {
+              // message is Buffer
+              console.log(message.toString())
+              client.end()
+            });
+        </script>
+    </body>
+</html>

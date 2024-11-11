@@ -13,6 +13,7 @@ class Pet(BaseModel):
     friends: list[Friend]
 
 
+
 class Error(BaseModel):
     error: str
 
