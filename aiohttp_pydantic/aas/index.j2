@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title | default('Async API Specification') }}</title>
+    <link rel="stylesheet" href="https://unpkg.com/@asyncapi/react-component@2.5.0/styles/default.min.css">
+</head>
+<body>
+    <div id="asyncapi"></div>
+    <script src="https://unpkg.com/@asyncapi/react-component@2.5.0/browser/standalone/index.js"></script>
+    <script>
+        AsyncApiStandalone.render(
+        {
+            schema: {
+              url: "{{ asyncapi_spec_url }}",
+              options: { method: "GET", mode: "cors" },
+            },
+            // See documentation:
+            // https://github.com/asyncapi/asyncapi-react/blob/next/docs/configuration/config-modification.md
+            config: {
+                show: {
+                    sidebar: true,
+                }
+            },
+        },
+        document.getElementById('asyncapi')
+    );
+    </script>
+</body>
+</html>

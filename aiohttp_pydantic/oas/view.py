@@ -15,7 +15,6 @@ from ..utils import is_pydantic_base_model, robuste_issubclass
 from ..view import PydanticView, is_pydantic_view
 from . import docstring_parser
 from .definition import (
-    AIOHTTP_HAS_APP_KEY,
     key_apps_to_expose,
     key_index_template,
     key_title_spec,
@@ -23,6 +22,7 @@ from .definition import (
     key_security,
     key_display_configurations
 )
+from ..compat import AIOHTTP_HAS_APP_KEY
 from .struct import OpenApiSpec3, OperationObject, PathItem
 from .typing import is_status_code_type
 
