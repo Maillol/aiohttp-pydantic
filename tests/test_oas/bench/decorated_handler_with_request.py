@@ -5,15 +5,22 @@ from typing import List, Optional, Union, Literal
 from uuid import UUID
 
 from aiohttp import web
+from pydantic import Field
 from aiohttp_pydantic.oas.typing import r200, r201, r204, r404
 from aiohttp_pydantic import oas
 from aiohttp_pydantic.decorator import inject_params
+
 from .model import Pet
 
 
 @inject_params.and_request
 async def list_pet(
-    request, format: str, name: Optional[str] = None, *, promo: Optional[UUID] = None
+    request,
+    format: str,
+    name: Optional[str] = None,
+    *,
+    promo: Optional[UUID] = Field(
+        None, description="description for promo")
 ) -> r200[List[Pet]]:
     """
     Get a list of pets
