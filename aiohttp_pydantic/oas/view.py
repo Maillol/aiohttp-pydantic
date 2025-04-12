@@ -186,6 +186,9 @@ def _add_http_method_to_oas(
             )
             if def_sub_schemas := attr_schema.pop("$defs", None):
                 oas.components.schemas.update(def_sub_schemas)
+            # update description
+            if "description" in attr_schema:
+                oas_operation.parameters[i].description = attr_schema.pop("description")
             oas_operation.parameters[i].schema = attr_schema
 
     return_type = get_type_hints(handler).get("return")

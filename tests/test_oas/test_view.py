@@ -124,8 +124,8 @@ async def test_pets_route_should_have_get_method(generate_oas, aiohttp_client, e
                     "anyOf": [{"format": "uuid", "type": "string"}, {"type": "null"}],
                     "title": "promo",
                     "default": None,
-                    "description": "description for promo",
                 },
+                "description": "description for promo",
             },
         ],
         "responses": {
