@@ -21,7 +21,8 @@ from .definition import (
     key_title_spec,
     key_version_spec,
     key_security,
-    key_display_configurations
+    key_swagger_ui_version,
+    key_display_configurations,
 )
 from .struct import OpenApiSpec3, OperationObject, PathItem
 from .typing import is_status_code_type
@@ -115,7 +116,9 @@ def _add_http_method_to_oas(
         status_code_descriptions = {}
 
     if body_args:
-        multipart = any(robuste_issubclass(type_, UploadedFile) for type_ in body_args.values())
+        multipart = any(
+            robuste_issubclass(type_, UploadedFile) for type_ in body_args.values()
+        )
         if multipart:
             # requestBody:
             #   content:
@@ -136,17 +139,16 @@ def _add_http_method_to_oas(
                 if robuste_issubclass(type_, UploadedFile):
                     properties[name] = {"type": "string", "format": "binary"}
                 else:
-                    body_schema = type_.model_json_schema(ref_template="#/components/schemas/{model}").copy()
+                    body_schema = type_.model_json_schema(
+                        ref_template="#/components/schemas/{model}"
+                    ).copy()
                     properties[name] = body_schema
                     if def_sub_schemas := body_schema.pop("$defs", None):
                         oas.components.schemas.update(def_sub_schemas)
 
             oas_operation.request_body.content = {
                 "multipart/form-data": {
-                    "schema": {
-                        "type": "object",
-                        "properties": properties
-                    }
+                    "schema": {"type": "object", "properties": properties}
                 }
             }
 
@@ -240,7 +242,9 @@ def generate_oas(
                             _add_http_method_to_oas(oas, path, method_name, handler)
                     else:
                         handler = getattr(view, resource_route.method.lower())
-                        _add_http_method_to_oas(oas, path, resource_route.method, handler)
+                        _add_http_method_to_oas(
+                            oas, path, resource_route.method, handler
+                        )
                 elif _is_aiohttp_view(resource_route.handler):
                     view: View = resource_route.handler
                     info = resource_route.get_info()
@@ -248,13 +252,19 @@ def generate_oas(
                     if resource_route.method == "*":
                         for method_name in hdrs.METH_ALL:
                             handler = getattr(view, method_name.lower(), None)
-                            if handler is not None and getattr(handler, "is_aiohttp_pydantic_handler", False):
+                            if handler is not None and getattr(
+                                handler, "is_aiohttp_pydantic_handler", False
+                            ):
                                 _add_http_method_to_oas(oas, path, method_name, handler)
 
-                elif getattr(resource_route.handler, "is_aiohttp_pydantic_handler", False):
+                elif getattr(
+                    resource_route.handler, "is_aiohttp_pydantic_handler", False
+                ):
                     info = resource_route.get_info()
                     path = oas.paths[info.get("path", info.get("formatter"))]
-                    _add_http_method_to_oas(oas, path, resource_route.method, resource_route.handler)
+                    _add_http_method_to_oas(
+                        oas, path, resource_route.method, resource_route.handler
+                    )
 
     if security:
         oas.components.security_schemes.update(security)
@@ -267,8 +277,12 @@ def _app_key_or_string(app, app_key, str_key):
         return app[app_key]
     if AIOHTTP_HAS_APP_KEY:
         key_name = "key_" + str_key.replace(" ", "_")
-        warnings.warn(f"Use from aiohttp_pydantic.oas.definition import {key_name}; app[{key_name}] = ... "
-                      f"instead of app[{str_key}] = ...", DeprecationWarning, stacklevel=4)
+        warnings.warn(
+            f"Use from aiohttp_pydantic.oas.definition import {key_name}; app[{key_name}] = ... "
+            f"instead of app[{str_key}] = ...",
+            DeprecationWarning,
+            stacklevel=4,
+        )
     return app[str_key]
 
 
@@ -288,13 +302,13 @@ async def oas_ui(request):
     View to serve the swagger-ui to read open api specification of application.
     """
     template = _app_key_or_string(request.app, key_index_template, "index template")
-
+    swagger_ui_version = request.app.get(key_swagger_ui_version, "5")
     return Response(
         text=template.render(
             {
-                "openapi_spec_url": request.app.router['spec'].canonical,
-                "static_url": request.app.router['static'].canonical,
+                "openapi_spec_url": request.app.router["spec"].canonical,
                 "display_configurations": request.app[key_display_configurations],
+                "swagger_ui_version": swagger_ui_version,
             }
         ),
         content_type="text/html",
