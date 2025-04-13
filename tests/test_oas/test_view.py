@@ -245,8 +245,8 @@ async def test_pets_id_route_should_have_delete_method(generate_oas, aiohttp_cli
 
 @pytest.mark.parametrize(
     "generate_oas",
-    generate_oas_spec[:1],
-    ids=["aiohttp view", "pydantic view", "decorated handler", "decorated handler with request"][:1],
+    generate_oas_spec,
+    ids=["aiohttp view", "pydantic view", "decorated handler", "decorated handler with request"],
 )
 async def test_pets_id_route_should_have_get_method(generate_oas, aiohttp_client, event_loop):
     generated_oas = await generate_oas(aiohttp_client)
