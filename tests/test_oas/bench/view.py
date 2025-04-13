@@ -5,6 +5,7 @@ from typing import List, Optional, Union, Literal
 from uuid import UUID
 
 from aiohttp import web
+from pydantic import Field
 
 from aiohttp_pydantic.oas.typing import r200, r201, r204, r404
 from aiohttp_pydantic import oas
@@ -16,7 +17,12 @@ class PetCollectionView(web.View):
 
     @inject_params.in_method
     async def get(
-        self, format: str, name: Optional[str] = None, *, promo: Optional[UUID] = None
+        self,
+        format: str,
+        name: Optional[str] = None,
+        *,
+        promo: Optional[UUID] = Field(
+            None, description="description for promo")
     ) -> r200[List[Pet]]:
         """
         Get a list of pets

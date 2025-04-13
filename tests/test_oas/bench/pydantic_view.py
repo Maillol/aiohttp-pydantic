@@ -5,6 +5,7 @@ from typing import List, Optional, Union, Literal
 from uuid import UUID
 
 from aiohttp import web
+from pydantic import Field
 
 from aiohttp_pydantic import PydanticView
 from aiohttp_pydantic.oas.typing import r200, r201, r204, r404
@@ -15,7 +16,12 @@ from .model import Pet
 
 class PetCollectionView(PydanticView):
     async def get(
-        self, format: str, name: Optional[str] = None, *, promo: Optional[UUID] = None
+        self,
+        format: str,
+        name: Optional[str] = None,
+        *,
+        promo: Optional[UUID] = Field(
+            None, description="description for promo")
     ) -> r200[List[Pet]]:
         """
         Get a list of pets
@@ -27,7 +33,10 @@ class PetCollectionView(PydanticView):
         """
         return web.json_response()
 
-    async def post(self, pet: Pet) -> r201[Pet]:
+    async def post(
+        self,
+        pet: Pet
+    ) -> r201[Pet]:
         """Create a Pet"""
         return web.json_response()
 
