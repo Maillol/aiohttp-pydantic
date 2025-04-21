@@ -8,6 +8,7 @@ from aiohttp import hdrs
 from aiohttp.web import Response, json_response, View
 from aiohttp.web_app import Application
 from pydantic import RootModel
+from pydantic.fields import FieldInfo
 
 from ..injectors import _parse_func_signature
 from ..uploaded_file import UploadedFile
@@ -175,7 +176,13 @@ def _add_http_method_to_oas(
             oas_operation.parameters[i].name = name
 
             attrs = {"__annotations__": {"root": type_}}
-            if name in defaults:
+            if (
+                name in defaults and
+                not (
+                    isinstance(defaults[name], FieldInfo) and
+                    defaults[name].is_required()
+                )
+            ):
                 attrs["root"] = defaults[name]
                 oas_operation.parameters[i].required = False
             else:

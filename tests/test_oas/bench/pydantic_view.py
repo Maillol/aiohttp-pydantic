@@ -17,7 +17,7 @@ from .model import Pet
 class PetCollectionView(PydanticView):
     async def get(
         self,
-        format: str,
+        format: str = Field(...),
         name: Optional[str] = None,
         *,
         promo: Optional[UUID] = Field(
