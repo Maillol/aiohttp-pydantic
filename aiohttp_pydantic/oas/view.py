@@ -178,17 +178,14 @@ def _add_http_method_to_oas(
             oas_operation.parameters[i].name = name
 
             attrs = {"__annotations__": {"root": type_}}
-            if (
-                name in defaults and
-                not (
+            oas_operation.parameters[i].required = True
+            if name in defaults:
+                attrs["root"] = defaults[name]
+                if not (
                     isinstance(defaults[name], FieldInfo) and
                     defaults[name].is_required()
-                )
-            ):
-                attrs["root"] = defaults[name]
-                oas_operation.parameters[i].required = False
-            else:
-                oas_operation.parameters[i].required = True
+                ):
+                    oas_operation.parameters[i].required = False
 
             attr_schema = type(name, (RootModel,), attrs).model_json_schema(
                 ref_template="#/components/schemas/{model}"

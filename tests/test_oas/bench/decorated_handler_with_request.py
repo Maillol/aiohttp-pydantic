@@ -16,7 +16,7 @@ from .model import Pet
 @inject_params.and_request
 async def list_pet(
     request,
-    format: str = Field(...),
+    format: str = Field(..., description="description for format"),
     name: Optional[str] = None,
     *,
     promo: Optional[UUID] = Field(
