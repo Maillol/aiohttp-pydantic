@@ -15,7 +15,7 @@ from .model import Pet
 
 @inject_params
 async def list_pet(
-    format: str = Field(...),
+    format: str = Field(..., description="description for format"),
     name: Optional[str] = None,
     *,
     promo: Optional[UUID] = Field(

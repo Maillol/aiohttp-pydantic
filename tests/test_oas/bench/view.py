@@ -18,7 +18,7 @@ class PetCollectionView(web.View):
     @inject_params.in_method
     async def get(
         self,
-        format: str = Field(...),
+        format: str = Field(..., description="description for format"),
         name: Optional[str] = None,
         *,
         promo: Optional[UUID] = Field(

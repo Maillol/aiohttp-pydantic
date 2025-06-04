@@ -105,6 +105,7 @@ async def test_pets_route_should_have_get_method(generate_oas, aiohttp_client, e
                 "name": "format",
                 "required": True,
                 "schema": {"title": "format", "type": "string"},
+                "description": "description for format",
             },
             {
                 "in": "query",
