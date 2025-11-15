@@ -129,7 +129,9 @@ def security(docstring: str) -> Optional[List[dict]]:
         if re.fullmatch("security\\s*:.*", line, re.IGNORECASE):
             iterator.rewind()
             lines = " ".join(_i_extract_block(iterator))
-            security_items = [" ".join(e.split()) for e in re.split("[,;]", lines.split(":")[1])]
+            security_items = [
+                " ".join(e.split()) for e in re.split("[,;]", lines.split(":")[1])
+            ]
             return [{item: [] for item in security_items}]
 
     return None
@@ -153,7 +155,9 @@ def operation(docstring: str) -> str:
     lines = LinesIterator(docstring)
     ret = []
     for line in lines:
-        if re.fullmatch("status\\s+codes?\\s*:|tags\\s*:.*|security\\s*:.*", line, re.IGNORECASE):
+        if re.fullmatch(
+            "status\\s+codes?\\s*:|tags\\s*:.*|security\\s*:.*", line, re.IGNORECASE
+        ):
             lines.rewind()
             for _ in _i_extract_block(lines):
                 pass

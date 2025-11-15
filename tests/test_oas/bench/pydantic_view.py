@@ -20,8 +20,7 @@ class PetCollectionView(PydanticView):
         format: str = Field(..., description="description for format"),
         name: Optional[str] = None,
         *,
-        promo: Optional[UUID] = Field(
-            None, description="description for promo")
+        promo: Optional[UUID] = Field(None, description="description for promo"),
     ) -> r200[List[Pet]]:
         """
         Get a list of pets
@@ -33,10 +32,7 @@ class PetCollectionView(PydanticView):
         """
         return web.json_response()
 
-    async def post(
-        self,
-        pet: Pet
-    ) -> r201[Pet]:
+    async def post(self, pet: Pet) -> r201[Pet]:
         """Create a Pet"""
         return web.json_response()
 
@@ -48,6 +44,7 @@ class PetItemView(PydanticView):
         /,
         size: Union[int, Literal["x", "l", "s"]],
         day: Union[int, Literal["now"]] = "now",
+        age: Union[int, None] = None,
     ) -> Union[r200[Pet], r404]:
         return web.json_response()
 

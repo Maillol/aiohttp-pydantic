@@ -29,11 +29,11 @@ key_swagger_ui_version = AppKey("key_swagger_ui_version", str)
 
 
 __all__ = [
-    key_apps_to_expose,
-    key_display_configurations,
-    key_index_template,
-    key_security,
-    key_swagger_ui_version,
-    key_title_spec,
-    key_version_spec,
+    "key_apps_to_expose",
+    "key_display_configurations",
+    "key_index_template",
+    "key_security",
+    "key_swagger_ui_version",
+    "key_title_spec",
+    "key_version_spec",
 ]

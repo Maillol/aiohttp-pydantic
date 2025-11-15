@@ -7,7 +7,6 @@ from json.decoder import JSONDecodeError
 from types import SimpleNamespace
 from typing import Callable, Tuple, Literal, Type
 
-from aiohttp.hdrs import CONTENT_TYPE
 from aiohttp.helpers import parse_mimetype
 from aiohttp.web_exceptions import HTTPBadRequest
 from aiohttp.web_request import BaseRequest
@@ -85,11 +84,17 @@ class BodyGetter(AbstractInjector):
                 self._file_arg_names.append(name)
             else:
                 if self.arg_name != "":
-                    raise RuntimeError(f"You cannot define multiple bodies arguments with pydantic.BaseModel (\"{self.arg_name}\" and \"{name}\" are annotated with a pydantic.BaseModel)")
-                elif self._file_arg_names:
-                    raise RuntimeError(f"You cannot define a pydantic.BaseModel argument after an UploadedFile argument. (The argument \"{name}\" must be defined before \"{self._file_arg_names[0]}\")")
+                    raise RuntimeError(
+                        f'You cannot define multiple bodies arguments with pydantic.BaseModel ("{self.arg_name}" and "{name}" are annotated with a pydantic.BaseModel)'
+                    )
+                if self._file_arg_names:
+                    raise RuntimeError(
+                        f'You cannot define a pydantic.BaseModel argument after an UploadedFile argument. (The argument "{name}" must be defined before "{self._file_arg_names[0]}")'
+                    )
                 self.arg_name, self.model = name, annotation
-                self._expect_object = self.model.model_json_schema().get("type") == "object"
+                self._expect_object = (
+                    self.model.model_json_schema().get("type") == "object"
+                )
 
     async def _inject(self, json_getter, args_view: list, kwargs_view: dict):
         try:
@@ -104,7 +109,7 @@ class BodyGetter(AbstractInjector):
         if self._expect_object and not isinstance(body, dict):
             raise HTTPBadRequest(
                 text='[{"in": "body", "loc": ["__root__"], "msg": "value is not a '
-                     'valid dict", "type": "type_error.dict"}]',
+                'valid dict", "type": "type_error.dict"}]',
                 content_type="application/json",
             ) from None
 
@@ -122,7 +127,7 @@ class BodyGetter(AbstractInjector):
                             {
                                 "in": "body",
                                 "loc": ["__root__"],
-                                "msg": f'Multipart request is required',
+                                "msg": "Multipart request is required",
                                 "type": "type_error.multipart",
                             }
                         ]
@@ -134,18 +139,23 @@ class BodyGetter(AbstractInjector):
 
             # If the request contains a part to fill a pydantic.Basemodel.
             if self.arg_name:
-                multipart_reader = StrictOrderedMultipartReader(reader, [self.arg_name] + self._file_arg_names)
+                multipart_reader = StrictOrderedMultipartReader(
+                    reader, [self.arg_name] + self._file_arg_names
+                )
                 part = await multipart_reader.next_part(self.arg_name)
                 # TODO: Check the header ?
                 # part.headers.get(CONTENT_TYPE) == 'application/json'
                 await self._inject(part.json, args_view, kwargs_view)
             else:
-                multipart_reader = StrictOrderedMultipartReader(reader, self._file_arg_names)
-
+                multipart_reader = StrictOrderedMultipartReader(
+                    reader, self._file_arg_names
+                )
 
             # Inject file upload utility as view kwarg.
             for file_arg_name in self._file_arg_names:
-                kwargs_view[file_arg_name] = UploadedFile(multipart_reader, file_arg_name)
+                kwargs_view[file_arg_name] = UploadedFile(
+                    multipart_reader, file_arg_name
+                )
 
 
 class QueryGetter(AbstractInjector):
@@ -315,7 +325,9 @@ def _parse_func_signature(
             path_args[param_name] = annotation
 
         elif param_spec.kind is param_spec.POSITIONAL_OR_KEYWORD:
-            if is_pydantic_base_model(annotation) or robuste_issubclass(annotation, UploadedFile):
+            if is_pydantic_base_model(annotation) or robuste_issubclass(
+                annotation, UploadedFile
+            ):
                 body_args[param_name] = annotation
             else:
                 qs_args[param_name] = annotation

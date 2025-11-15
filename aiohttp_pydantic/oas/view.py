@@ -10,6 +10,7 @@ from aiohttp.web_app import Application
 from pydantic import RootModel
 from pydantic.fields import FieldInfo
 
+from . import pydantic_schema_to_oas
 from ..injectors import _parse_func_signature
 from ..uploaded_file import UploadedFile
 from ..utils import is_pydantic_base_model, robuste_issubclass
@@ -37,19 +38,25 @@ class _OASResponseBuilder:
     generate the OAS operation response.
     """
 
-    def __init__(self, oas: OpenApiSpec3, oas_operation, status_code_descriptions):
+    def __init__(
+        self,
+        oas: OpenApiSpec3,
+        oas_operation,
+        status_code_descriptions,
+        pydantic_to_oas,
+    ):
         self._oas_operation = oas_operation
         self._oas = oas
         self._status_code_descriptions = status_code_descriptions
+        self._to_oas = pydantic_to_oas
 
     def _handle_pydantic_base_model(self, obj):
         if is_pydantic_base_model(obj):
-            response_schema = obj.model_json_schema(
-                ref_template="#/components/schemas/{model}"
-            ).copy()
-            if def_sub_schemas := response_schema.pop("$defs", None):
-                self._oas.components.schemas.update(def_sub_schemas)
-            return response_schema
+            return _extract_and_register_pydantic_schema(
+                obj=obj,
+                oas=self._oas,
+                to_oas_func=self._to_oas,
+            )
         return {}
 
     def _handle_list(self, obj):
@@ -93,9 +100,28 @@ class _OASResponseBuilder:
         self._handle_union(obj)
 
 
+def _extract_and_register_pydantic_schema(obj, oas: OpenApiSpec3, to_oas_func):
+    """
+    Extracts a Pydantic model schema, converts it to OAS, registers all sub-schemas,
+    and returns a {"$ref": "..."} pointing to the main model schema.
+    """
+    schema = obj.model_json_schema(ref_template="#/components/schemas/{model}").copy()
+    to_oas_func(schema)
+    if def_sub_schemas := schema.pop("$defs", None):
+        for sub_schema in def_sub_schemas.values():
+            to_oas_func(sub_schema)
+        oas.components.schemas.update(def_sub_schemas)
+
+    model_name = schema.get("title", obj.__name__)
+    oas.components.schemas[model_name] = schema
+
+    return {"$ref": f"#/components/schemas/{model_name}"}
+
+
 def _add_http_method_to_oas(
     oas: OpenApiSpec3, oas_path: PathItem, http_method: str, handler
 ):
+    to_oas = pydantic_schema_to_oas.translater(oas.spec.get("version", "3.0.0"))
     http_method = http_method.lower()
     oas_operation: OperationObject = getattr(oas_path, http_method)
     first_param = next(iter(signature(handler).parameters), "")
@@ -143,8 +169,11 @@ def _add_http_method_to_oas(
                     body_schema = type_.model_json_schema(
                         ref_template="#/components/schemas/{model}"
                     ).copy()
+                    to_oas(body_schema)
                     properties[name] = body_schema
                     if def_sub_schemas := body_schema.pop("$defs", None):
+                        for sub_schema in def_sub_schemas.values():
+                            to_oas(sub_schema)
                         oas.components.schemas.update(def_sub_schemas)
 
             oas_operation.request_body.content = {
@@ -154,16 +183,14 @@ def _add_http_method_to_oas(
             }
 
         else:
-            body_schema = (
-                next(iter(body_args.values()))
-                .model_json_schema(ref_template="#/components/schemas/{model}")
-                .copy()
+            obj = next(iter(body_args.values()))
+            body_ref = _extract_and_register_pydantic_schema(
+                obj=obj,
+                oas=oas,
+                to_oas_func=to_oas,
             )
-            if def_sub_schemas := body_schema.pop("$defs", None):
-                oas.components.schemas.update(def_sub_schemas)
-
             oas_operation.request_body.content = {
-                "application/json": {"schema": body_schema}
+                "application/json": {"schema": body_ref}
             }
 
     indexes = count()
@@ -172,6 +199,7 @@ def _add_http_method_to_oas(
         ("query", qs_args.items()),
         ("header", header_args.items()),
     ):
+
         for name, type_ in args:
             i = next(indexes)
             oas_operation.parameters[i].in_ = args_location
@@ -180,17 +208,22 @@ def _add_http_method_to_oas(
             attrs = {"__annotations__": {"root": type_}}
             oas_operation.parameters[i].required = True
             if name in defaults:
-                attrs["root"] = defaults[name]
+                if defaults[name] is not None:
+                    attrs["root"] = defaults[name]
+
                 if not (
-                    isinstance(defaults[name], FieldInfo) and
-                    defaults[name].is_required()
+                    isinstance(defaults[name], FieldInfo)
+                    and defaults[name].is_required()
                 ):
                     oas_operation.parameters[i].required = False
 
             attr_schema = type(name, (RootModel,), attrs).model_json_schema(
                 ref_template="#/components/schemas/{model}"
             )
+            to_oas(attr_schema)
             if def_sub_schemas := attr_schema.pop("$defs", None):
+                for sub_schema in def_sub_schemas.values():
+                    to_oas(sub_schema)
                 oas.components.schemas.update(def_sub_schemas)
             # update description
             if "description" in attr_schema:
@@ -199,9 +232,11 @@ def _add_http_method_to_oas(
 
     return_type = get_type_hints(handler).get("return")
     if return_type is not None:
-        _OASResponseBuilder(oas, oas_operation, status_code_descriptions).build(
+        _OASResponseBuilder(oas, oas_operation, status_code_descriptions, to_oas).build(
             return_type
         )
+    else:
+        oas_operation.responses["200"].description = ""
 
 
 def _is_aiohttp_view(obj):
