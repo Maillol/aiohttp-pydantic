@@ -65,7 +65,7 @@ generate_oas_spec = [
     ],
 )
 async def test_generated_oas_should_have_components_schemas(
-    generate_oas, aiohttp_client, event_loop
+    generate_oas, aiohttp_client
 ):
     generated_oas = await generate_oas(aiohttp_client)
     assert generated_oas["components"]["schemas"] == {
@@ -111,9 +111,7 @@ async def test_generated_oas_should_have_components_schemas(
         "decorated handler with request",
     ],
 )
-async def test_generated_oas_should_have_pets_paths(
-    generate_oas, aiohttp_client, event_loop
-):
+async def test_generated_oas_should_have_pets_paths(generate_oas, aiohttp_client):
     generated_oas = await generate_oas(aiohttp_client)
     assert "/pets" in generated_oas["paths"]
 
@@ -128,9 +126,7 @@ async def test_generated_oas_should_have_pets_paths(
         "decorated handler with request",
     ],
 )
-async def test_pets_route_should_have_get_method(
-    generate_oas, aiohttp_client, event_loop
-):
+async def test_pets_route_should_have_get_method(generate_oas, aiohttp_client):
     generated_oas = await generate_oas(aiohttp_client)
 
     assert generated_oas["paths"]["/pets"]["get"] == {
@@ -194,17 +190,13 @@ async def test_pets_route_should_have_get_method(
         "decorated handler with request",
     ],
 )
-async def test_pets_route_should_have_post_method(
-    generate_oas, aiohttp_client, event_loop
-):
+async def test_pets_route_should_have_post_method(generate_oas, aiohttp_client):
     generated_oas = await generate_oas(aiohttp_client)
     assert generated_oas["paths"]["/pets"]["post"] == {
         "description": "Create a Pet",
         "requestBody": {
             "content": {
-                "application/json": {
-                    "schema": {'$ref': '#/components/schemas/Pet'}
-                }
+                "application/json": {"schema": {"$ref": "#/components/schemas/Pet"}}
             }
         },
         "responses": {
@@ -228,9 +220,7 @@ async def test_pets_route_should_have_post_method(
         "decorated handler with request",
     ],
 )
-async def test_generated_oas_should_have_pets_id_paths(
-    generate_oas, aiohttp_client, event_loop
-):
+async def test_generated_oas_should_have_pets_id_paths(generate_oas, aiohttp_client):
     generated_oas = await generate_oas(aiohttp_client)
     assert "/pets/{id}" in generated_oas["paths"]
 
@@ -245,9 +235,7 @@ async def test_generated_oas_should_have_pets_id_paths(
         "decorated handler with request",
     ],
 )
-async def test_pets_id_route_should_have_delete_method(
-    generate_oas, aiohttp_client, event_loop
-):
+async def test_pets_id_route_should_have_delete_method(generate_oas, aiohttp_client):
     generated_oas = await generate_oas(aiohttp_client)
     assert generated_oas["paths"]["/pets/{id}"]["delete"] == {
         "description": "",
@@ -273,9 +261,7 @@ async def test_pets_id_route_should_have_delete_method(
         "decorated handler with request",
     ],
 )
-async def test_pets_id_route_should_have_get_method(
-    generate_oas, aiohttp_client, event_loop
-):
+async def test_pets_id_route_should_have_get_method(generate_oas, aiohttp_client):
     generated_oas = await generate_oas(aiohttp_client)
     now_desc = {"enum": ["now"], "type": "string"}
 
@@ -338,9 +324,7 @@ async def test_pets_id_route_should_have_get_method(
         "decorated handler with request",
     ],
 )
-async def test_pets_id_route_should_have_put_method(
-    generate_oas, aiohttp_client, event_loop
-):
+async def test_pets_id_route_should_have_put_method(generate_oas, aiohttp_client):
     generated_oas = await generate_oas(aiohttp_client)
     assert generated_oas["paths"]["/pets/{id}"]["put"] == {
         "parameters": [
@@ -353,11 +337,7 @@ async def test_pets_id_route_should_have_put_method(
         ],
         "requestBody": {
             "content": {
-                "application/json": {
-                    "schema": {
-                        '$ref': '#/components/schemas/Pet'
-                    }
-                }
+                "application/json": {"schema": {"$ref": "#/components/schemas/Pet"}}
             }
         },
         "responses": {"200": {"description": ""}},
@@ -374,9 +354,7 @@ async def test_pets_id_route_should_have_put_method(
         "decorated handler with request",
     ],
 )
-async def test_simple_type_route_should_have_get_method(
-    generate_oas, aiohttp_client, event_loop
-):
+async def test_simple_type_route_should_have_get_method(generate_oas, aiohttp_client):
     generated_oas = await generate_oas(aiohttp_client)
     assert generated_oas["paths"]["/simple-type"]["get"] == {
         "description": "",

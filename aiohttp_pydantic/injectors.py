@@ -11,7 +11,7 @@ from aiohttp.helpers import parse_mimetype
 from aiohttp.web_exceptions import HTTPBadRequest
 from aiohttp.web_request import BaseRequest
 from multidict import MultiDict
-from pydantic import BaseModel
+from pydantic import BaseModel, create_model
 
 from .uploaded_file import UploadedFile, StrictOrderedMultipartReader
 from .utils import is_pydantic_base_model, robuste_issubclass
@@ -61,9 +61,13 @@ class MatchInfoGetter(AbstractInjector):
     context = "path"
 
     def __init__(self, args_spec: dict, default_values: dict):
-        attrs = {"__annotations__": args_spec}
-        attrs.update(default_values)
-        self.model = type("PathModel", (BaseModel,), attrs)
+        self.model = create_model(
+            "PathModel",
+            **{
+                k: ((v, d) if ((d := default_values.get(k, ...)) is not ...) else v)
+                for k, v in args_spec.items()
+            },
+        )
 
     def inject(self, request: BaseRequest, args_view: list, kwargs_view: dict):
         args_view.extend(self.model(**request.match_info).model_dump().values())
@@ -174,10 +178,13 @@ class QueryGetter(AbstractInjector):
                 self._groups[group_name] = (group, _get_group_signature(group)[0])
 
         _unpack_group_in_signature(args_spec, default_values)
-        attrs = {"__annotations__": args_spec}
-        attrs.update(default_values)
-
-        self.model = type("QueryModel", (BaseModel,), attrs)
+        self.model = create_model(
+            "QueryModel",
+            **{
+                k: ((v, d) if ((d := default_values.get(k, ...)) is not ...) else v)
+                for k, v in args_spec.items()
+            },
+        )
         self.args_spec = args_spec
         self._is_multiple = frozenset(
             name for name, spec in args_spec.items() if typing.get_origin(spec) is list
@@ -226,10 +233,13 @@ class HeadersGetter(AbstractInjector):
                 self._groups[group_name] = (group, _get_group_signature(group)[0])
 
         _unpack_group_in_signature(args_spec, default_values)
-
-        attrs = {"__annotations__": args_spec}
-        attrs.update(default_values)
-        self.model = type("HeaderModel", (BaseModel,), attrs)
+        self.model = create_model(
+            "HeaderModel",
+            **{
+                k: ((v, d) if ((d := default_values.get(k, ...)) is not ...) else v)
+                for k, v in args_spec.items()
+            },
+        )
 
     def inject(self, request: BaseRequest, args_view: list, kwargs_view: dict):
         header = {k.lower().replace("-", "_"): v for k, v in request.headers.items()}

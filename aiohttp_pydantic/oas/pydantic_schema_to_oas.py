@@ -30,11 +30,16 @@ def pydantic_schema_to_oas_3_0(schema):
                 element["enum"] = [const_value]
 
 
+def pydantic_schema_to_oas_3_1(schema):
+    pass
+
+
 _PYDANTIC_SCHEMA_TO_OAS: List[Tuple[version.Version, Callable]] = [
     (
         version.Version("3.0.0"),
         pydantic_schema_to_oas_3_0,
-    )
+    ),
+    (version.Version("3.1.0"), pydantic_schema_to_oas_3_1),
 ]
 
 _PYDANTIC_SCHEMA_TO_OAS.sort(key=itemgetter(0))

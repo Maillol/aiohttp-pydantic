@@ -99,7 +99,7 @@ app_builders_1 = [build_app_with_pydantic_view_1, build_app_with_decorated_handl
 @pytest.mark.parametrize(
     "app_builder", app_builders_1, ids=["pydantic view", "decorated handler"]
 )
-async def test_post_json_and_upload_files(app_builder, aiohttp_client, event_loop):
+async def test_post_json_and_upload_files(app_builder, aiohttp_client):
     client = await aiohttp_client(app_builder())
     with aiohttp.MultipartWriter("form-data") as multipart:
         multipart.append_json(
@@ -135,7 +135,7 @@ async def test_post_json_and_upload_files(app_builder, aiohttp_client, event_loo
 @pytest.mark.parametrize(
     "app_builder", app_builders_1, ids=["pydantic view", "decorated handler"]
 )
-async def test_upload_file(app_builder, aiohttp_client, event_loop):
+async def test_upload_file(app_builder, aiohttp_client):
     client = await aiohttp_client(app_builder())
     with aiohttp.MultipartWriter("form-data") as multipart:
         multipart.append(
@@ -153,7 +153,7 @@ async def test_upload_file(app_builder, aiohttp_client, event_loop):
 @pytest.mark.parametrize(
     "app_builder", app_builders_1, ids=["pydantic view", "decorated handler"]
 )
-async def test_missing_file(app_builder, aiohttp_client, event_loop):
+async def test_missing_file(app_builder, aiohttp_client):
     client = await aiohttp_client(app_builder())
     with aiohttp.MultipartWriter("form-data") as multipart:
         multipart.append_json(
@@ -186,7 +186,7 @@ async def test_missing_file(app_builder, aiohttp_client, event_loop):
 @pytest.mark.parametrize(
     "app_builder", app_builders_1, ids=["pydantic view", "decorated handler"]
 )
-async def test_missing_object(app_builder, aiohttp_client, event_loop):
+async def test_missing_object(app_builder, aiohttp_client):
     client = await aiohttp_client(app_builder())
     with aiohttp.MultipartWriter("form-data") as multipart:
         multipart.append(
@@ -217,7 +217,7 @@ async def test_missing_object(app_builder, aiohttp_client, event_loop):
 @pytest.mark.parametrize(
     "app_builder", app_builders_1, ids=["pydantic view", "decorated handler"]
 )
-async def test_missing_last_part(app_builder, aiohttp_client, event_loop):
+async def test_missing_last_part(app_builder, aiohttp_client):
     client = await aiohttp_client(app_builder())
     with aiohttp.MultipartWriter("form-data") as multipart:
         multipart.append_json(
@@ -250,9 +250,7 @@ async def test_missing_last_part(app_builder, aiohttp_client, event_loop):
 @pytest.mark.parametrize(
     "app_builder", app_builders_1, ids=["pydantic view", "decorated handler"]
 )
-async def test_send_standard_request_instead_of_multipart(
-    app_builder, aiohttp_client, event_loop
-):
+async def test_send_standard_request_instead_of_multipart(app_builder, aiohttp_client):
     client = await aiohttp_client(app_builder())
     resp = await client.post(
         "/book-and-files", json={"title": "Les trois petits cochons", "nb_page": "2"}
@@ -272,9 +270,7 @@ async def test_send_standard_request_instead_of_multipart(
 @pytest.mark.parametrize(
     "app_builder", app_builders_1, ids=["pydantic view", "decorated handler"]
 )
-async def test_handler_programmed_with_reading_order_error(
-    app_builder, aiohttp_client, event_loop
-):
+async def test_handler_programmed_with_reading_order_error(app_builder, aiohttp_client):
     client = await aiohttp_client(app_builder())
     with aiohttp.MultipartWriter("form-data") as multipart:
         multipart.append(
@@ -297,7 +293,7 @@ async def test_handler_programmed_with_reading_order_error(
     }
 
 
-async def test_error_handler_definition(event_loop):
+async def test_error_handler_definition():
 
     with pytest.raises(RuntimeError) as e_info:
 

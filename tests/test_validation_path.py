@@ -36,7 +36,7 @@ app_builders = [build_app_with_pydantic_view, build_app_with_decorated_handler]
     "app_builder", app_builders, ids=["pydantic view", "decorated handler"]
 )
 async def test_get_article_with_correct_path_parameters_should_return_parameters_in_path(
-    app_builder, aiohttp_client, event_loop
+    app_builder, aiohttp_client
 ):
     client = await aiohttp_client(app_builder())
     resp = await client.get("/article/1234/tag/music/before/1980")
@@ -49,7 +49,7 @@ async def test_get_article_with_correct_path_parameters_should_return_parameters
     "app_builder", app_builders, ids=["pydantic view", "decorated handler"]
 )
 async def test_get_article_with_wrong_path_parameters_should_return_error(
-    app_builder, aiohttp_client, event_loop
+    app_builder, aiohttp_client
 ):
     client = await aiohttp_client(app_builder())
     resp = await client.get("/article/1234/tag/music/before/now")

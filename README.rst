@@ -419,6 +419,30 @@ Open Api Specification.
             return web.Response(status=204)
 
 
+Patching JSON Schema
+~~~~~~~~~~~~~~~~~~~~
+
+You can define a function that modifies a Pydantic-generated schema in-place:
+
+.. code-block:: python3
+
+    def pydantic_schema_to_oas_3_0(schema: dict) -> None:
+        """
+        Modify the JSON schema in place.
+
+        This function receives a Pydantic-generated JSON schema as a dictionary,
+        and can adjust or enhance it before it is used in the OpenAPI specification.
+        """
+
+Once defined, you can register it:
+
+.. code-block:: python3
+
+    oas.pydantic_schema_to_oas.add_or_replace_translater(
+        "3.0.0", pydantic_schema_to_oas_3_0
+    )
+
+
 Group parameters
 ----------------
 

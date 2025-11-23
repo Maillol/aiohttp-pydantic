@@ -60,7 +60,7 @@ app_builders_1 = [build_app_with_pydantic_view_1, build_app_with_decorated_handl
     "app_builder", app_builders_1, ids=["pydantic view", "decorated handler"]
 )
 async def test_post_an_article_without_required_field_should_return_an_error_message(
-    app_builder, aiohttp_client, event_loop
+    app_builder, aiohttp_client
 ):
 
     client = await aiohttp_client(app_builder())
@@ -89,7 +89,7 @@ async def test_post_an_article_without_required_field_should_return_an_error_mes
     "app_builder", app_builders_1, ids=["pydantic view", "decorated handler"]
 )
 async def test_post_an_article_with_wrong_type_field_should_return_an_error_message(
-    app_builder, aiohttp_client, event_loop
+    app_builder, aiohttp_client
 ):
 
     client = await aiohttp_client(app_builder())
@@ -110,7 +110,7 @@ async def test_post_an_article_with_wrong_type_field_should_return_an_error_mess
 @pytest.mark.parametrize(
     "app_builder", app_builders_1, ids=["pydantic view", "decorated handler"]
 )
-async def test_post_an_array_json_is_supported(app_builder, aiohttp_client, event_loop):
+async def test_post_an_array_json_is_supported(app_builder, aiohttp_client):
 
     client = await aiohttp_client(app_builder())
     body = [{"name": "foo", "nb_page": 3}] * 2
@@ -124,7 +124,7 @@ async def test_post_an_array_json_is_supported(app_builder, aiohttp_client, even
     "app_builder", app_builders_1, ids=["pydantic view", "decorated handler"]
 )
 async def test_post_an_array_json_to_an_object_model_should_return_an_error(
-    app_builder, aiohttp_client, event_loop
+    app_builder, aiohttp_client
 ):
 
     client = await aiohttp_client(app_builder())
@@ -145,7 +145,7 @@ async def test_post_an_array_json_to_an_object_model_should_return_an_error(
     "app_builder", app_builders_1, ids=["pydantic view", "decorated handler"]
 )
 async def test_post_an_object_json_to_a_list_model_should_return_an_error(
-    app_builder, aiohttp_client, event_loop
+    app_builder, aiohttp_client
 ):
 
     client = await aiohttp_client(app_builder())
@@ -168,7 +168,7 @@ async def test_post_an_object_json_to_a_list_model_should_return_an_error(
     "app_builder", app_builders_1, ids=["pydantic view", "decorated handler"]
 )
 async def test_post_a_valid_article_should_return_the_parsed_type(
-    app_builder, aiohttp_client, event_loop
+    app_builder, aiohttp_client
 ):
 
     client = await aiohttp_client(app_builder())

@@ -157,9 +157,7 @@ app_builders_3 = [
 @pytest.mark.parametrize(
     "app_builder", app_builders_3, ids=["pydantic view", "decorated handler"]
 )
-async def test_group_with_field_type_is_union_none_int(
-    app_builder, aiohttp_client, event_loop
-):
+async def test_group_with_field_type_is_union_none_int(app_builder, aiohttp_client):
     client = await aiohttp_client(app_builder())
     resp = await client.get("/bug56")
     assert resp.status == 200
@@ -171,7 +169,7 @@ async def test_group_with_field_type_is_union_none_int(
     "app_builder", app_builders_1, ids=["pydantic view", "decorated handler"]
 )
 async def test_get_article_without_required_qs_should_return_an_error_message(
-    app_builder, aiohttp_client, event_loop
+    app_builder, aiohttp_client
 ):
 
     client = await aiohttp_client(app_builder())
@@ -193,7 +191,7 @@ async def test_get_article_without_required_qs_should_return_an_error_message(
     "app_builder", app_builders_1, ids=["pydantic view", "decorated handler"]
 )
 async def test_get_article_with_wrong_qs_type_should_return_an_error_message(
-    app_builder, aiohttp_client, event_loop
+    app_builder, aiohttp_client
 ):
 
     client = await aiohttp_client(app_builder())
@@ -215,7 +213,7 @@ async def test_get_article_with_wrong_qs_type_should_return_an_error_message(
     "app_builder", app_builders_1, ids=["pydantic view", "decorated handler"]
 )
 async def test_get_article_with_valid_qs_should_return_the_parsed_type(
-    app_builder, aiohttp_client, event_loop
+    app_builder, aiohttp_client
 ):
 
     client = await aiohttp_client(app_builder())
@@ -235,7 +233,7 @@ async def test_get_article_with_valid_qs_should_return_the_parsed_type(
     "app_builder", app_builders_1, ids=["pydantic view", "decorated handler"]
 )
 async def test_get_article_with_valid_qs_and_omitted_optional_should_return_default_value(
-    app_builder, aiohttp_client, event_loop
+    app_builder, aiohttp_client
 ):
 
     client = await aiohttp_client(app_builder())
@@ -255,7 +253,7 @@ async def test_get_article_with_valid_qs_and_omitted_optional_should_return_defa
     "app_builder", app_builders_1, ids=["pydantic view", "decorated handler"]
 )
 async def test_get_article_with_multiple_value_for_qs_age_must_failed(
-    app_builder, aiohttp_client, event_loop
+    app_builder, aiohttp_client
 ):
 
     client = await aiohttp_client(app_builder())
@@ -277,9 +275,7 @@ async def test_get_article_with_multiple_value_for_qs_age_must_failed(
 @pytest.mark.parametrize(
     "app_builder", app_builders_1, ids=["pydantic view", "decorated handler"]
 )
-async def test_get_article_with_multiple_value_of_tags(
-    app_builder, aiohttp_client, event_loop
-):
+async def test_get_article_with_multiple_value_of_tags(app_builder, aiohttp_client):
 
     client = await aiohttp_client(app_builder())
 
@@ -300,7 +296,7 @@ async def test_get_article_with_multiple_value_of_tags(
     "app_builder", app_builders_1, ids=["pydantic view", "decorated handler"]
 )
 async def test_get_article_with_one_value_of_tags_must_be_a_list(
-    app_builder, aiohttp_client, event_loop
+    app_builder, aiohttp_client
 ):
 
     client = await aiohttp_client(app_builder())
@@ -321,9 +317,7 @@ async def test_get_article_with_one_value_of_tags_must_be_a_list(
 @pytest.mark.parametrize(
     "app_builder", app_builders_2, ids=["pydantic view", "decorated handler"]
 )
-async def test_get_article_without_required_field_page(
-    app_builder, aiohttp_client, event_loop
-):
+async def test_get_article_without_required_field_page(app_builder, aiohttp_client):
     client = await aiohttp_client(app_builder())
 
     resp = await client.get("/article", params={"with_comments": 1})
@@ -343,7 +337,7 @@ async def test_get_article_without_required_field_page(
 @pytest.mark.parametrize(
     "app_builder", app_builders_2, ids=["pydantic view", "decorated handler"]
 )
-async def test_get_article_with_page(app_builder, aiohttp_client, event_loop):
+async def test_get_article_with_page(app_builder, aiohttp_client):
     client = await aiohttp_client(app_builder())
 
     resp = await client.get("/article", params={"with_comments": 1, "page_num": 2})
@@ -355,9 +349,7 @@ async def test_get_article_with_page(app_builder, aiohttp_client, event_loop):
 @pytest.mark.parametrize(
     "app_builder", app_builders_2, ids=["pydantic view", "decorated handler"]
 )
-async def test_get_article_with_page_and_page_size(
-    app_builder, aiohttp_client, event_loop
-):
+async def test_get_article_with_page_and_page_size(app_builder, aiohttp_client):
     client = await aiohttp_client(app_builder())
 
     resp = await client.get(
@@ -371,9 +363,7 @@ async def test_get_article_with_page_and_page_size(
 @pytest.mark.parametrize(
     "app_builder", app_builders_2, ids=["pydantic view", "decorated handler"]
 )
-async def test_get_article_with_page_and_wrong_page_size(
-    app_builder, aiohttp_client, event_loop
-):
+async def test_get_article_with_page_and_wrong_page_size(app_builder, aiohttp_client):
     client = await aiohttp_client(app_builder())
 
     resp = await client.get(
