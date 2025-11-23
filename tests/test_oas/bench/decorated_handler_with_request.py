@@ -19,8 +19,7 @@ async def list_pet(
     format: str = Field(..., description="description for format"),
     name: Optional[str] = None,
     *,
-    promo: Optional[UUID] = Field(
-        None, description="description for promo")
+    promo: Optional[UUID] = Field(None, description="description for promo"),
 ) -> r200[List[Pet]]:
     """
     Get a list of pets
@@ -46,6 +45,7 @@ async def get_pet(
     /,
     size: Union[int, Literal["x", "l", "s"]],
     day: Union[int, Literal["now"]] = "now",
+    age: Union[int, None] = None,
 ) -> Union[r200[Pet], r404]:
     return web.json_response()
 

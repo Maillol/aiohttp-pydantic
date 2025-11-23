@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import argparse
-from textwrap import dedent
 from io import StringIO
+import json
+import openapi_spec_validator
 from pathlib import Path
 import pytest
 
@@ -21,15 +22,11 @@ def cmd_line():
 def test_show_oas_of_app(cmd_line):
     args = cmd_line.parse_args(["tests.test_oas.test_cmd.sample"])
     args.output = StringIO()
+
     args.func(args)
 
-    expected = dedent(
-        """
-    {
-        "info": {
-            "title": "Aiohttp pydantic application",
-            "version": "1.0.0"
-        },
+    expected = {
+        "info": {"title": "Aiohttp pydantic application", "version": "1.0.0"},
         "openapi": "3.0.0",
         "paths": {
             "/route-1/{a}": {
@@ -38,13 +35,11 @@ def test_show_oas_of_app(cmd_line):
                         {
                             "in": "path",
                             "name": "a",
-                            "required": true,
-                            "schema": {
-                                "title": "a",
-                                "type": "integer"
-                            }
+                            "required": True,
+                            "schema": {"title": "a", "type": "integer"},
                         }
-                    ]
+                    ],
+                    "responses": {"200": {"description": ""}},
                 }
             },
             "/sub-app/route-2/{b}": {
@@ -53,34 +48,28 @@ def test_show_oas_of_app(cmd_line):
                         {
                             "in": "path",
                             "name": "b",
-                            "required": true,
-                            "schema": {
-                                "title": "b",
-                                "type": "integer"
-                            }
+                            "required": True,
+                            "schema": {"title": "b", "type": "integer"},
                         }
-                    ]
+                    ],
+                    "responses": {"200": {"description": ""}},
                 }
-            }
-        }
+            },
+        },
     }
-    """
-    )
 
-    assert args.output.getvalue().strip() == expected.strip()
+    returned_spec = json.loads(args.output.getvalue())
+    openapi_spec_validator.validate(returned_spec)
+
+    assert json.loads(args.output.getvalue()) == expected
 
 
 def test_show_oas_of_sub_app(cmd_line):
     args = cmd_line.parse_args(["tests.test_oas.test_cmd.sample:sub_app"])
     args.output = StringIO()
     args.func(args)
-    expected = dedent(
-        """
-    {
-        "info": {
-            "title": "Aiohttp pydantic application",
-            "version": "1.0.0"
-        },
+    expected = {
+        "info": {"title": "Aiohttp pydantic application", "version": "1.0.0"},
         "openapi": "3.0.0",
         "paths": {
             "/sub-app/route-2/{b}": {
@@ -89,21 +78,17 @@ def test_show_oas_of_sub_app(cmd_line):
                         {
                             "in": "path",
                             "name": "b",
-                            "required": true,
-                            "schema": {
-                                "title": "b",
-                                "type": "integer"
-                            }
+                            "required": True,
+                            "schema": {"title": "b", "type": "integer"},
                         }
-                    ]
+                    ],
+                    "responses": {"200": {"description": ""}},
                 }
             }
-        }
+        },
     }
-    """
-    )
 
-    assert args.output.getvalue().strip() == expected.strip()
+    assert json.loads(args.output.getvalue()) == expected
 
 
 def test_show_oas_of_a_callable(cmd_line):
@@ -116,13 +101,8 @@ def test_show_oas_of_a_callable(cmd_line):
     )
     args.output = StringIO()
     args.func(args)
-    expected = dedent(
-        """
-        {
-        "info": {
-            "title": "Aiohttp pydantic application",
-            "version": "1.0.0"
-        },
+    expected = {
+        "info": {"title": "Aiohttp pydantic application", "version": "1.0.0"},
         "openapi": "3.0.0",
         "paths": {
             "/route-3/{a}": {
@@ -131,18 +111,14 @@ def test_show_oas_of_a_callable(cmd_line):
                         {
                             "in": "path",
                             "name": "a",
-                            "required": true,
-                            "schema": {
-                                "title": "a",
-                                "type": "integer"
-                            }
+                            "required": True,
+                            "schema": {"title": "a", "type": "integer"},
                         }
-                    ]
+                    ],
+                    "responses": {"200": {"description": ""}},
                 }
             }
-        }
+        },
     }
-    """
-    )
 
-    assert args.output.getvalue().strip() == expected.strip()
+    assert json.loads(args.output.getvalue()) == expected

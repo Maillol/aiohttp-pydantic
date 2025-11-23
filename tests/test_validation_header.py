@@ -137,7 +137,7 @@ app_builders_3 = [build_app_with_pydantic_view_3, build_app_with_decorated_handl
     "app_builder", app_builders_1, ids=["pydantic view", "decorated handler"]
 )
 async def test_get_article_without_required_header_should_return_an_error_message(
-    app_builder, aiohttp_client, event_loop
+    app_builder, aiohttp_client
 ):
     app = web.Application()
     app.router.add_view("/article", ArticleView)
@@ -161,7 +161,7 @@ async def test_get_article_without_required_header_should_return_an_error_messag
     "app_builder", app_builders_1, ids=["pydantic view", "decorated handler"]
 )
 async def test_get_article_with_wrong_header_type_should_return_an_error_message(
-    app_builder, aiohttp_client, event_loop
+    app_builder, aiohttp_client
 ):
     app = web.Application()
     app.router.add_view("/article", ArticleView)
@@ -193,7 +193,7 @@ async def test_get_article_with_wrong_header_type_should_return_an_error_message
     "app_builder", app_builders_1, ids=["pydantic view", "decorated handler"]
 )
 async def test_get_article_with_valid_header_should_return_the_parsed_type(
-    app_builder, aiohttp_client, event_loop
+    app_builder, aiohttp_client
 ):
     app = web.Application()
     app.router.add_view("/article", ArticleView)
@@ -211,7 +211,7 @@ async def test_get_article_with_valid_header_should_return_the_parsed_type(
     "app_builder", app_builders_1, ids=["pydantic view", "decorated handler"]
 )
 async def test_get_article_with_valid_header_containing_hyphen_should_be_returned(
-    app_builder, aiohttp_client, event_loop
+    app_builder, aiohttp_client
 ):
     app = web.Application()
     app.router.add_view("/article", ArticleView)
@@ -228,9 +228,7 @@ async def test_get_article_with_valid_header_containing_hyphen_should_be_returne
 @pytest.mark.parametrize(
     "app_builder", app_builders_2, ids=["pydantic view", "decorated handler"]
 )
-async def test_wrong_value_to_header_defined_with_str_enum(
-    app_builder, aiohttp_client, event_loop
-):
+async def test_wrong_value_to_header_defined_with_str_enum(app_builder, aiohttp_client):
     app = web.Application()
     app.router.add_view("/coord", ViewWithEnumType)
 
@@ -258,7 +256,7 @@ async def test_wrong_value_to_header_defined_with_str_enum(
     "app_builder", app_builders_2, ids=["pydantic view", "decorated handler"]
 )
 async def test_correct_value_to_header_defined_with_str_enum(
-    app_builder, aiohttp_client, event_loop
+    app_builder, aiohttp_client
 ):
     client = await aiohttp_client(app_builder())
     resp = await client.get("/coord", headers={"format": "UMT"})
@@ -270,7 +268,7 @@ async def test_correct_value_to_header_defined_with_str_enum(
 @pytest.mark.parametrize(
     "app_builder", app_builders_3, ids=["pydantic view", "decorated handler"]
 )
-async def test_with_signature_group(app_builder, aiohttp_client, event_loop):
+async def test_with_signature_group(app_builder, aiohttp_client):
     client = await aiohttp_client(app_builder())
     resp = await client.get(
         "/article",

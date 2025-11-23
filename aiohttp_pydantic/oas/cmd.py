@@ -61,9 +61,9 @@ def format_type(value) -> Callable:
     """
     Date Dumper one of (json, yaml)
     """
-    dumpers = {"json": lambda data: json.dumps(data, sort_keys=True, indent=4)}
+    dumpers = {"json": lambda data: json.dumps(data, sort_keys=False, indent=4)}
     if yaml is not None:
-        dumpers["yaml"] = yaml.dump
+        dumpers["yaml"] = lambda data: yaml.dump(data, sort_keys=False)
 
     try:
         return dumpers[value]

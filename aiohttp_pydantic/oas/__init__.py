@@ -38,7 +38,7 @@ def setup(
     title_spec: Optional[str] = None,
     security: Optional[dict] = None,
     display_configurations: Optional[dict] = None,
-    swagger_ui_version="5"
+    swagger_ui_version="5",
 ):
     """
     Configure and attach an OpenAPI Specification (OAS) UI sub-application to an aiohttp app.

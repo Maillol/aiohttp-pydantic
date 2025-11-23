@@ -21,7 +21,7 @@ class StrictOrderedMultipartReader:
         # Check Programing Error
         try:
             expected_part_name = self._expected_part_names.pop()
-        except ImportError:
+        except IndexError:
             raise MultipartReadingError(
                 f'Try to read a not expected part "{part_name}" in the multipart request'
             )
@@ -31,10 +31,9 @@ class StrictOrderedMultipartReader:
                 raise MultipartReadingError(
                     f'Try to read part "{part_name}" before "{expected_part_name}" in the multipart request'
                 )
-            else:
-                raise MultipartReadingError(
-                    f'Try to read a not expected part "{part_name}" in the multipart request'
-                )
+            raise MultipartReadingError(
+                f'Try to read a not expected part "{part_name}" in the multipart request'
+            )
 
         # Validate multipart request contents.
         if (part := await self._reader.next()) is None:

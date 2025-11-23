@@ -14,6 +14,7 @@ class Color(str, Enum):
 class Toy(BaseModel):
     name: str
     color: Color
+    brand: str | None = None
 
 
 class Pet(BaseModel):

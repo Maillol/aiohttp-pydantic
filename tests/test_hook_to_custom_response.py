@@ -37,7 +37,7 @@ class ArticleView(PydanticView):
 
 
 async def test_post_an_article_with_wrong_type_field_should_return_an_error_message(
-    aiohttp_client, event_loop
+    aiohttp_client,
 ):
     app = web.Application()
     app.router.add_view("/article", ArticleView)
