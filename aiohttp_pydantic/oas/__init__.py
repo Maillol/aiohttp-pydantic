@@ -1,19 +1,21 @@
+import json
+import warnings
 from importlib import resources
 from typing import Iterable, Optional
-import json
+
 import jinja2
 from aiohttp import web
 
-from .view import get_oas, oas_ui
 from .definition import (
     key_apps_to_expose,
+    key_display_configurations,
     key_index_template,
-    key_version_spec,
-    key_title_spec,
     key_security,
     key_swagger_ui_version,
-    key_display_configurations,
+    key_title_spec,
+    key_version_spec,
 )
+from .view import get_oas, oas_ui
 
 
 def _index_j2_content() -> str:
@@ -65,6 +67,13 @@ def setup(
             Defaults to an empty dict.
         swagger_ui_version: The version of Swagger UI to use. Defaults to "5".
     """
+    if security is not None:
+        warnings.warn(
+            f"security argument is deprecated. Please use aiohttp_pydantic.security module instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
     if display_configurations is None:
         display_configurations = {}
     if enable:

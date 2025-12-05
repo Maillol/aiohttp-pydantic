@@ -17,7 +17,7 @@ class StrictOrderedMultipartReader:
         self._reader = reader
         self._expected_part_names = part_names[::-1]
 
-    async def next_part(self, part_name):
+    async def next_part(self, part_name) -> BodyPartReader:
         # Check Programing Error
         try:
             expected_part_name = self._expected_part_names.pop()
@@ -73,6 +73,7 @@ class StrictOrderedMultipartReader:
 
 
 class UploadedFile:
+    _part: None | BodyPartReader
 
     def __init__(self, multipart_reader: StrictOrderedMultipartReader, part_name: str):
         self._multipart_reader = multipart_reader

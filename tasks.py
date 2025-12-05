@@ -2,18 +2,39 @@
 To use this module, install invoke and type invoke -l
 """
 
-from functools import partial
+from functools import partial, lru_cache
 import os
 from pathlib import Path
-import setuptools.config
 from invoke import task, Exit, Task as Task_, call
+from setuptools import find_packages
+import ast
 
 
-def read_configuration(conf_file) -> dict:
-    try:  # Setuptools >= 61
-        return setuptools.config.setupcfg.read_configuration(conf_file)
-    except Exception:
-        return setuptools.config.read_configuration(conf_file)
+@lru_cache()
+def get_metadata() -> dict:
+    def get_version(init_file: str) -> str:
+        path = Path(init_file)
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in tree.body:
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name) and target.id == "__version__":
+                        value = node.value
+                        if isinstance(value, ast.Constant):  # Python 3.8+
+                            return value.value
+                        elif isinstance(value, ast.Str):  # Python <3.8
+                            return value.s
+
+    packages = find_packages(exclude=["tests*", "demo*"])
+
+    return {
+        "metadata": {
+            "version": get_version("./aiohttp_pydantic/__init__.py")
+        },
+        "options": {
+            "packages": packages
+        }
+    }
 
 
 def activate_venv(c, venv: str):
@@ -118,7 +139,7 @@ def tag_eq_version(c):
     Ensure that the last git tag matches the package version
     """
     git_tag = c.run("git describe --tags HEAD", hide=True).stdout.strip()
-    package_version = read_configuration("./setup.cfg")["metadata"]["version"]
+    package_version = get_metadata()["metadata"]["version"]
     if git_tag != f"v{package_version}":
         raise Exit(
             f"ERROR: The git tag {git_tag!r} does not matches"
@@ -141,12 +162,12 @@ def prepare_ci_env(c):
     c.run("dist_venv/bin/python -m build --wheel")
 
     title("Installing wheel", "=")
-    package_version = read_configuration("./setup.cfg")["metadata"]["version"]
+    package_version = get_metadata()["metadata"]["version"]
     dist = next(Path("dist").glob(f"aiohttp_pydantic-{package_version}-*.whl"))
     c.run(f"dist_venv/bin/python -m pip install {dist}")
 
     # We verify that aiohttp-pydantic module is importable before installing CI tools.
-    package_names = read_configuration("./setup.cfg")["options"]["packages"]
+    package_names = get_metadata()["options"]["packages"]
     for package_name in package_names:
         c.run(f"dist_venv/bin/python -I -c 'import {package_name}'")
 
@@ -166,7 +187,7 @@ def upload(c, pypi_user=None, pypi_password=None):
     """
     Upload on pypi
     """
-    package_version = read_configuration("./setup.cfg")["metadata"]["version"]
+    package_version = get_metadata()["metadata"]["version"]
     dist = next(Path("dist").glob(f"aiohttp_pydantic-{package_version}-*.whl"))
     if pypi_user is not None and pypi_password is not None:
         c.run(

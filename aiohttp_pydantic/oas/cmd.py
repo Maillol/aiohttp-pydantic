@@ -1,8 +1,9 @@
 import argparse
 import importlib
 import json
-from typing import Dict, Protocol, Optional, Callable
 import sys
+from typing import Callable, Dict, Optional, Protocol
+
 from .view import generate_oas
 
 

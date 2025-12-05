@@ -21,8 +21,33 @@ for you, validates the data, and injects that you want as parameters.
 Features:
 
 - Query string, request body, URL path and HTTP headers validation.
-- Open API Specification generation.
+- Authentication and authorization with multiple security schemes
+- Automatic OpenAPI Specification generation with security documentation
+- File Upload: Handle file uploads with multipart/form-data validation
 
+
+What's New in 3.0.0
+-------------------
+
+**Comprehensive Security System**
+
+Version 3.0.0 introduces a powerful authentication and authorization framework:
+
+- **Multiple authentication schemes**: JWT, API Keys, OAuth2, OpenID Connect
+- **Flexible authorization**: Design your own permission rules (strings, enums, custom objects)
+- **Composable rules**: Combine authentication methods with ``|`` (OR) and ``&`` (AND) operators
+- **Context-aware permissions**: Make authorization decisions based on the requested resource
+- **Automatic OpenAPI documentation**: Security schemes are automatically included in the spec
+
+See the `Authentication and Authorization`_ section for complete documentation.
+
+**Breaking Changes**
+
+- Dropped support for Python 3.10 and 3.11
+- Requires aiohttp >= 3.10
+- Removed deprecated features (see changelog for details)
+
+.. _Authentication and Authorization: #authentication-and-authorization
 
 How to install
 --------------
@@ -570,65 +595,353 @@ A tip to use the same error handling on each view
         return web.json_response({'with_comments': with_comments})
 
 
+Authentication and Authorization
+---------------------------------
 
+aiohttp_pydantic provides a comprehensive security system for handling authentication and authorization
+in your API. Security schemes are automatically included in the OpenAPI specification, and the ``@auth``
+decorator adds security requirements to endpoint documentation.
 
-Add security to the endpoints
------------------------------
+You define security schemes, register them with your application, and then use the ``@auth``
+decorator to protect your endpoints.
 
-aiohttp_pydantic provides a basic way to add security to the endpoints. You can define the security
-on the setup level using the *security* parameter and then mark view methods that will require this security schema.
+Setup Security Schemes
+~~~~~~~~~~~~~~~~~~~~~~
+
+A security scheme consists of two main responsibilities:
+
+1. **Authentication** (``authenticate`` method): Verify the user's identity from the request
+2. **Authorization** (``permits`` method): Check if the authenticated user has permission for a specific action
+
+Define your security scheme by inheriting from one of the base classes and implementing
+the ``authenticate`` and ``permits`` methods.
+
+The ``rule`` parameter passed to ``permits()`` is fully application-defined.
+The framework does not impose any specific type or structure. You are free to design
+your own authorization model.
+
+For example, ``rule`` can be:
+
+- A simple ``str`` (e.g., ``"admin"``, ``"owner"``)
+- An ``Enum`` for stronger typing
+- A complex object representing a small authorization DSL
+- Any other Python object
+
+The value passed to ``@auth(USER_AUTH.rule(...))`` will be forwarded as-is to ``permits()``.
+
 
 .. code-block:: python3
 
     from aiohttp import web
-    from aiohttp_pydantic import oas
+    from aiohttp_pydantic.security.auth_scheme import HTTPSecurityScheme
+    from aiohttp_pydantic.security.exceptions import AuthenticationError
+    import jwt
+    from jwt import PyJWTError
 
+    class JWTAuth(HTTPSecurityScheme):
+        """
+        JWT Bearer token authentication
+        """
+        scheme = "Bearer"
+        bearer_format = "JWT"
 
-    app = web.Application()
-    oas.setup(app, security={"APIKeyHeader": {"type": "apiKey", "in": "header", "name": "Authorization"}})
+        def __init__(self, jwt_secret):
+            self._jwt_secret = jwt_secret
 
+        async def authenticate(self, request: web.Request) -> dict:
+            """
+            Verify the JWT token and return the payload.
 
-And then mark the view method with the *security* descriptor
+            Raises:
+                AuthenticationError: If the token is invalid or expired
+            """
+            token = self.extract_credentials(request)  # Extracts "Bearer <token>"
+            try:
+                payload = jwt.decode(token, self._jwt_secret, algorithms="HS256")
+                return payload
+            except PyJWTError as error:
+                raise AuthenticationError(str(error)) from error
 
+        async def permits(
+            self,
+            request: web.Request,
+            identity: dict,  # The payload returned by authenticate()
+            rule: str,
+            context: dict
+        ) -> bool:
+            """
+            Check if the authenticated user has the required permission.
+
+            Args:
+                identity: The authenticated user data (JWT payload)
+                rule: The permission rule to check (e.g., "user", "admin")
+                context: Validated handler parameters (e.g., {"id": 123} for /pets/{id})
+            """
+            if rule == "admin":
+                return identity.get("admin", False)
+            return True
+
+    # Create a reference to use in decorators
+    USER_AUTH = JWTAuth.ref("USER_AUTH")
+
+Then register your security scheme with the application:
 
 .. code-block:: python3
 
+    from aiohttp import web
+    from aiohttp_pydantic import oas, security
+
+    app = web.Application()
+
+    # Setup OpenAPI documentation
+    oas.setup(app, title_spec="My API", version_spec="1.0.0")
+
+    # Register security schemes
+    security.setup(
+        app,
+        schemes={USER_AUTH: JWTAuth(jwt_secret="your-secret-key")}
+    )
+
+Protect Endpoints
+~~~~~~~~~~~~~~~~~
+
+Use the ``@auth`` decorator to require authentication and authorization on your endpoints:
+
+.. code-block:: python3
 
     from aiohttp_pydantic import PydanticView
-    from aiohttp_pydantic.oas.typing import r200, r201, r204, r404
-
+    from aiohttp_pydantic.decorator import auth
+    from pydantic import BaseModel
 
     class Pet(BaseModel):
-        id: int
         name: str
-
-
-    class Error(BaseModel):
-        error: str
-
+        age: int
 
     class PetCollectionView(PydanticView):
-        async def get(self) -> r200[List[Pet]]:
-            """
-            Find all pets
 
-            Security: APIKeyHeader
-            Tags: pet
-            """
+        # Public endpoint - no authentication required
+        async def get(self) -> List[Pet]:
+            """List all pets"""
             pets = self.request.app["model"].list_pets()
             return web.json_response([pet.dict() for pet in pets])
 
-        async def post(self, pet: Pet) -> r201[Pet]:
+        # Protected endpoint - requires authentication with "write" permission
+        @auth(USER_AUTH.rule("write"))
+        async def post(self, pet: Pet) -> Pet:
             """
-            Add a new pet to the store
+            Create a new pet
 
-            Tags: pet
-            Status Codes:
-                201: The pet is created
+            Requires: Valid JWT token with "write" permission
             """
-            self.request.app["model"].add_pet(pet)
+            new_pet = self.request.app["model"].add_pet(pet)
+            return web.json_response(new_pet.dict())
+
+    class PetItemView(PydanticView):
+
+        # Protected endpoint - requires admin permission
+        @auth(USER_AUTH.rule("admin"))
+        async def delete(self, id: int, /) -> None:
+            """
+            Delete a pet
+
+            Requires: Valid JWT token with "admin" permission
+            """
+            self.request.app["model"].remove_pet(id)
+            return web.Response(status=204)
+
+Available Security Scheme Types
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+aiohttp_pydantic provides several built-in security scheme types:
+
+**HTTPSecurityScheme** - HTTP authentication (Basic, Bearer, etc.)
+
+.. code-block:: python3
+
+    from aiohttp_pydantic.security.auth_scheme import HTTPSecurityScheme
+
+    class BearerAuth(HTTPSecurityScheme):
+        scheme = "Bearer"
+        bearer_format = "JWT"  # Optional hint for documentation
+
+**APIKeySecurityScheme** - API key in header, query, or cookie
+
+.. code-block:: python3
+
+    from aiohttp_pydantic.security.auth_scheme import APIKeySecurityScheme
+
+    class APIKeyAuth(APIKeySecurityScheme):
+        parameter_name = "X-API-Key"  # Header name
+        location = "header"  # Can be "header", "query", or "cookie"
+
+**OAuth2SecurityScheme** - OAuth 2.0 flows
+
+.. code-block:: python3
+
+    from aiohttp_pydantic.security.auth_scheme import OAuth2SecurityScheme
+
+    class OAuth2Auth(OAuth2SecurityScheme):
+        def __init__(self):
+            flows = {
+                "authorizationCode": {
+                    "authorizationUrl": "https://example.com/oauth/authorize",
+                    "tokenUrl": "https://example.com/oauth/token",
+                    "scopes": {
+                        "read": "Read access",
+                        "write": "Write access"
+                    }
+                }
+            }
+            super().__init__(flows)
+
+**OpenIdConnectSecurityScheme** - OpenID Connect Discovery
+
+.. code-block:: python3
+
+    from aiohttp_pydantic.security.auth_scheme import OpenIdConnectSecurityScheme
+
+    class OpenIDAuth(OpenIdConnectSecurityScheme):
+        def __init__(self):
+            super().__init__("https://example.com/.well-known/openid-configuration")
+
+Combining Authentication Rules
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can combine multiple authentication schemes using ``|`` (OR) and ``&`` (AND) operators:
+
+**OR operator** - User can authenticate with either scheme:
+
+.. code-block:: python3
+
+    # Accept either JWT token OR API key
+    @auth(USER_AUTH.rule("read") | API_KEY_AUTH.rule(1))
+    async def get(self, id: int, /):
+        """Endpoint accessible with JWT or API key"""
+        ...
+
+**AND operator** - User must authenticate with both schemes:
+
+.. code-block:: python3
+
+    # Requires BOTH JWT token AND API key
+    @auth(USER_AUTH.rule("read") & API_KEY_AUTH.rule(1))
+    async def get(self):
+        """Endpoint requiring both JWT and API key"""
+        ...
+
+**Complex combinations**:
+
+.. code-block:: python3
+
+    # (JWT with admin) OR (API key level 3 AND machine certificate)
+    @auth((USER_AUTH.rule("admin") | API_KEY_AUTH.rule(3)) & CERT_AUTH.rule("machine"))
+    async def get(self):
+        """Complex authentication requirements"""
+        ...
+
+Context-Based Authorization
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``context`` parameter in ``permits()`` receives validated handler parameters,
+allowing you to implement resource-based permissions:
+
+.. code-block:: python3
+
+    class JWTAuth(HTTPSecurityScheme):
+        async def permits(self, request, identity, rule, context):
+            if rule == "owner":
+                # context contains validated path parameters
+                pet_id = context["id"]  # From /pets/{id}
+                pet = request.app["model"].find_pet(pet_id)
+
+                # Check if user is the owner
+                user_id = identity.get("sub")
+                return pet.owner_id == int(user_id)
+
+            return True
+
+    class PetItemView(PydanticView):
+        @auth(USER_AUTH.rule("owner"))
+        async def put(self, id: int, /, pet: Pet):
+            """
+            Update a pet
+
+            Only the pet owner can update it
+            """
+            self.request.app["model"].update_pet(id, pet)
             return web.json_response(pet.dict())
 
+Error Handling
+~~~~~~~~~~~~~~
+
+The security middleware automatically converts authentication and authorization errors
+into appropriate HTTP responses:
+
+- ``AuthenticationError`` → HTTP 401 Unauthorized
+- ``AuthorizationError`` → HTTP 403 Forbidden
+
+.. code-block:: python3
+
+    from aiohttp_pydantic.security.exceptions import AuthenticationError
+
+    async def authenticate(self, request):
+        token = self.extract_credentials(request)
+        if not self.is_valid(token):
+            raise AuthenticationError("Invalid token")
+        return self.decode_token(token)
+
+Using with Function-Based Handlers
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``@auth`` decorator also works with function-based handlers:
+
+.. code-block:: python3
+
+    from aiohttp_pydantic.decorator import inject_params, auth
+
+    @inject_params.and_request.with_auth(USER_AUTH.rule("read"))
+    async def get_articles(request, page: int = 1):
+        """
+        List articles
+
+        Requires: Valid JWT token with "read" permission
+        """
+        articles = request.app["model"].list_articles(page)
+        return web.json_response(articles)
+
+    app = web.Application()
+    app.router.add_get('/articles', get_articles)
+    security.setup(app, {USER_AUTH: JWTAuth(jwt_secret="secret")})
+
+OpenAPI Documentation
+~~~~~~~~~~~~~~~~~~~~~
+
+Security schemes are automatically included in the OpenAPI specification.
+The ``@auth`` decorator adds security requirements to endpoint documentation:
+
+.. code-block:: python3
+
+    # The generated OpenAPI spec will include:
+    {
+      "paths": {
+        "/pets": {
+          "post": {
+            "security": [
+              {"USER_AUTH": ["write"]}
+            ]
+          }
+        }
+      },
+      "components": {
+        "securitySchemes": {
+          "USER_AUTH": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT"
+          }
+        }
+      }
+    }
 
 Demo
 ----

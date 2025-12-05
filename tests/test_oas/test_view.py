@@ -132,11 +132,7 @@ async def test_pets_route_should_have_get_method(generate_oas, aiohttp_client):
     assert generated_oas["paths"]["/pets"]["get"] == {
         "description": "Get a list of pets",
         "tags": ["pet"],
-        "security": [
-            {
-                "APIKeyHeader": [],
-            },
-        ],
+        "security": [{"MACHINE_AUTH": []}, {"USER_AUTH": []}],
         "parameters": [
             {
                 "in": "query",
@@ -207,6 +203,12 @@ async def test_pets_route_should_have_post_method(generate_oas, aiohttp_client):
                 },
             }
         },
+        "security": [
+            {
+                "MACHINE_AUTH": [],
+                "USER_AUTH": [],
+            },
+        ],
     }
 
 

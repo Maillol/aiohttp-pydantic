@@ -9,11 +9,14 @@ from pydantic import Field
 from aiohttp_pydantic.oas.typing import r200, r201, r204, r404
 from aiohttp_pydantic import oas
 from aiohttp_pydantic.decorator import inject_params
-
+from .security import USER_AUTH, MACHINE_AUTH, JWTAuth, APIKeyAuth
 from .model import Pet
+from aiohttp_pydantic import security
+
+JWT_SECRET = "a-string-secret-at-least-256-bits-long"
 
 
-@inject_params.and_request
+@inject_params.and_request.with_auth(MACHINE_AUTH.rule(2) | USER_AUTH.rule("read"))
 async def list_pet(
     request,
     format: str = Field(..., description="description for format"),
@@ -24,7 +27,6 @@ async def list_pet(
     """
     Get a list of pets
 
-    Security: APIKeyHeader
     Tags: pet
     Status Codes:
       200: Successful operation
@@ -32,7 +34,7 @@ async def list_pet(
     return web.json_response()
 
 
-@inject_params.and_request
+@inject_params.and_request.with_auth(MACHINE_AUTH.rule(2) & USER_AUTH.rule("create"))
 async def post_pet(request, pet: Pet) -> r201[Pet]:
     """Create a Pet"""
     return web.json_response()
@@ -82,4 +84,13 @@ def build_app():
     app.router.add_delete("/pets/{id}", delete_pet)
     app.router.add_get("/simple-type", get_a_simple_type)
     oas.setup(app)
+    security.setup(
+        app,
+        {
+            USER_AUTH: JWTAuth(
+                jwt_secret=JWT_SECRET, jwt_algorithm="HS256", jwt_key="sub"
+            ),
+            MACHINE_AUTH: APIKeyAuth(),
+        },
+    )
     return app
