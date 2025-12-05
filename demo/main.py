@@ -4,7 +4,8 @@ from aiohttp_pydantic import oas
 
 from .model import Model
 from .view import PetCollectionView, PetItemView
-
+from .security import JWTIdentityPolicy, AuthorizationPolicy
+import aiohttp_security
 
 @middleware
 async def pet_not_found_to_404(request, handler):
@@ -20,3 +21,7 @@ oas.setup(app, version_spec="1.0.1", title_spec="My App", security={"APIKeyHeade
 app["model"] = Model()
 app.router.add_view("/pets", PetCollectionView)
 app.router.add_view("/pets/{id}", PetItemView)
+
+
+policy = JWTIdentityPolicy(secret="1234", key="sub")
+aiohttp_security.setup(app, policy, AuthorizationPolicy())
