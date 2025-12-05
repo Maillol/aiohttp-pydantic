@@ -1,6 +1,7 @@
 from functools import update_wrapper
 from inspect import iscoroutinefunction, signature
-from typing import Callable, Union
+from itertools import chain
+from typing import Callable, Union, get_args
 
 from aiohttp.typedefs import Handler
 from aiohttp.web_response import StreamResponse, json_response
@@ -14,6 +15,8 @@ from .injectors import (
     QueryGetter,
     _parse_func_signature,
 )
+from .security import SecurityScheme, TypeAnnotation, SecurityInjector
+from .utils import robuste_issubclass
 
 
 async def json_response_error(
@@ -171,13 +174,48 @@ def _inject_params(
                 _parse_func_signature(handler_)
             )
 
-        def default_value(args: dict) -> dict:
+        def default_value(args_: dict) -> dict:
             """
             Returns the default values of args.
             """
-            return {name: defaults[name] for name in args if name in defaults}
+            return {name: defaults[name] for name in args_ if name in defaults}
+
+        # Looking for SecurityScheme object.
+        def extract_security_scheme(args_: dict):
+            extracted_security_schemes = {}
+            for k, v in args_.items():
+                security_scheme_cls = None
+                security_scheme_arg = []
+                if robuste_issubclass(v, SecurityScheme):
+                    security_scheme_cls = v
+                else:
+                    for annotation_arg in get_args(v):
+                        if robuste_issubclass(annotation_arg, SecurityScheme):
+                            security_scheme_cls = annotation_arg
+                        elif isinstance(annotation_arg, TypeAnnotation):
+                            security_scheme_arg.append(annotation_arg)
+
+                if security_scheme_cls is not None:
+                    extracted_security_schemes[k] = (security_scheme_cls, security_scheme_arg)
+                    # TODO: instancier un objet SecurityScheme et l'associer à la vue décoré.
+                    # TODO: Faut-il faire une liste ici et l'itéré dans le wrapper du handler_ ? = [security_scheme_cls()]
+                    #    Si c'est le cas il faut aussi supprimer l'auth de l'injecteur ?
+
+            for k in extracted_security_schemes:
+                args_.pop(k)
+
+            return extracted_security_schemes
 
         injectors = []
+        for context, args in ("path", path_args), ("body", body_args), ("query string", qs_args), ( "headers", header_args):
+            if args:
+                for key, (security_scheme_cls, security_scheme_args) in extract_security_scheme(args).items():
+                    injectors.append(SecurityInjector(
+                        arg_name=key,
+                        context=context,
+                        security_scheme_cls=security_scheme_cls,
+                        security_scheme_args=security_scheme_args))
+
         if path_args:
             injectors.append(MatchInfoGetter(path_args, default_value(path_args)))
         if body_args:
