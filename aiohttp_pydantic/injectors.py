@@ -1,19 +1,19 @@
 import abc
 import json
-import typing
 import sys
-from inspect import signature, getmro
+import typing
+from inspect import getmro, signature
 from json.decoder import JSONDecodeError
 from types import SimpleNamespace
-from typing import Callable, Tuple, Literal, Type
+from typing import Any, Callable, Literal, Tuple, Type
 
 from aiohttp.helpers import parse_mimetype
 from aiohttp.web_exceptions import HTTPBadRequest
-from aiohttp.web_request import BaseRequest
-from multidict import MultiDict
+from aiohttp.web_request import Request
+from multidict import MultiMapping
 from pydantic import BaseModel, create_model
 
-from .uploaded_file import UploadedFile, StrictOrderedMultipartReader
+from .uploaded_file import StrictOrderedMultipartReader, UploadedFile
 from .utils import is_pydantic_base_model, robuste_issubclass
 
 CONTEXT = Literal["body", "headers", "path", "query string"]
@@ -47,7 +47,7 @@ class AbstractInjector(metaclass=abc.ABCMeta):
         """
 
     @abc.abstractmethod
-    def inject(self, request: BaseRequest, args_view: list, kwargs_view: dict):
+    def inject(self, request: Request, args_view: list, kwargs_view: dict):
         """
         Get elements in request and inject them in args_view or kwargs_view.
         """
@@ -69,7 +69,7 @@ class MatchInfoGetter(AbstractInjector):
             },
         )
 
-    def inject(self, request: BaseRequest, args_view: list, kwargs_view: dict):
+    def inject(self, request: Request, args_view: list, kwargs_view: dict):
         args_view.extend(self.model(**request.match_info).model_dump().values())
 
 
@@ -119,7 +119,7 @@ class BodyGetter(AbstractInjector):
 
         kwargs_view[self.arg_name] = self.model.model_validate(body)
 
-    async def inject(self, request: BaseRequest, args_view: list, kwargs_view: dict):
+    async def inject(self, request: Request, args_view: list, kwargs_view: dict):
         # Standard request containing data to fill a pydantic.Basemodel.
         if self.arg_name and not self._file_arg_names:
             await self._inject(request.json, args_view, kwargs_view)
@@ -190,7 +190,7 @@ class QueryGetter(AbstractInjector):
             name for name, spec in args_spec.items() if typing.get_origin(spec) is list
         )
 
-    def inject(self, request: BaseRequest, args_view: list, kwargs_view: dict):
+    def inject(self, request: Request, args_view: list, kwargs_view: dict):
         data = self._query_to_dict(request.query)
         cleaned = self.model(**data).model_dump()
         for group_name, (group_cls, group_attrs) in self._groups.items():
@@ -200,7 +200,7 @@ class QueryGetter(AbstractInjector):
             cleaned[group_name] = group
         kwargs_view.update(**cleaned)
 
-    def _query_to_dict(self, query: MultiDict):
+    def _query_to_dict(self, query: MultiMapping):
         """
         Return a dict with list as value from the MultiDict.
 
@@ -241,7 +241,7 @@ class HeadersGetter(AbstractInjector):
             },
         )
 
-    def inject(self, request: BaseRequest, args_view: list, kwargs_view: dict):
+    def inject(self, request: Request, args_view: list, kwargs_view: dict):
         header = {k.lower().replace("-", "_"): v for k, v in request.headers.items()}
         cleaned = self.model(**header).model_dump()
         for group_name, (group_cls, group_attrs) in self._groups.items():

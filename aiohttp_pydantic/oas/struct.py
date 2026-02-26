@@ -2,7 +2,7 @@
 Utility to write Open Api Specifications using the Python language.
 """
 
-from typing import Union, List, Optional
+from typing import List, Optional, Union
 
 
 class Info:

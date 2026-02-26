@@ -5,26 +5,24 @@ from itertools import count
 from typing import List, Optional, Type, get_type_hints
 
 from aiohttp import hdrs
-from aiohttp.web import Response, json_response, View
+from aiohttp.web import Response, View, json_response
 from aiohttp.web_app import Application
 from pydantic import RootModel
 from pydantic.fields import FieldInfo
 
-from . import pydantic_schema_to_oas
 from ..injectors import _parse_func_signature
 from ..uploaded_file import UploadedFile
 from ..utils import is_pydantic_base_model, robuste_issubclass
 from ..view import PydanticView, is_pydantic_view
-from . import docstring_parser
+from . import docstring_parser, pydantic_schema_to_oas
 from .definition import (
-    AIOHTTP_HAS_APP_KEY,
     key_apps_to_expose,
+    key_display_configurations,
     key_index_template,
-    key_title_spec,
-    key_version_spec,
     key_security,
     key_swagger_ui_version,
-    key_display_configurations,
+    key_title_spec,
+    key_version_spec,
 )
 from .struct import OpenApiSpec3, OperationObject, PathItem
 from .typing import is_status_code_type
@@ -119,7 +117,7 @@ def _extract_and_register_pydantic_schema(obj, oas: OpenApiSpec3, to_oas_func):
 
 
 def _add_http_method_to_oas(
-    oas: OpenApiSpec3, oas_path: PathItem, http_method: str, handler
+    app: Application, oas: OpenApiSpec3, oas_path: PathItem, http_method: str, handler
 ):
     to_oas = pydantic_schema_to_oas.translater(oas.spec.get("version", "3.0.0"))
     http_method = http_method.lower()
@@ -137,10 +135,25 @@ def _add_http_method_to_oas(
         oas_operation.description = docstring_parser.operation(description)
         oas_operation.tags = docstring_parser.tags(description)
         oas_operation.security = docstring_parser.security(description)
+        if oas_operation.security:
+            warnings.warn(
+                f"Defining the security scheme using the docstring is deprecated. "
+                f"Please use aiohttp_pydantic.security instead. "
+                f"This warning comes from the handler '{handler.__qualname__}'.",
+                DeprecationWarning,
+                stacklevel=0,
+            )
+
         oas_operation.deprecated = docstring_parser.deprecated(description)
         status_code_descriptions = docstring_parser.status_code(description)
     else:
         status_code_descriptions = {}
+
+    if auth_rule := getattr(handler, "aiohttp_pydantic_auth", {}):
+        oas_operation.security = auth_rule["auth_rule"].to_openapi_security(app)
+        oas.components.security_schemes.update(
+            auth_rule["auth_rule"].to_openapi_security_schemes(app)
+        )
 
     if body_args:
         multipart = any(
@@ -151,14 +164,14 @@ def _add_http_method_to_oas(
             #   content:
             #     multipart/form-data:
             #       schema:
-            #         type: object
+            #         ty pe: object
             #         properties:
             #           orderId:
-            #             type: integer
+            #             ty pe: integer
             #           userId:
-            #             type: integer
+            #             ty pe: integer
             #           fileName:
-            #             type: string
+            #             ty pe: string
             #             format: binary
 
             properties = {}
@@ -278,11 +291,13 @@ def generate_oas(
                     if resource_route.method == "*":
                         for method_name in view.allowed_methods:
                             handler = getattr(view, method_name.lower())
-                            _add_http_method_to_oas(oas, path, method_name, handler)
+                            _add_http_method_to_oas(
+                                app, oas, path, method_name, handler
+                            )
                     else:
                         handler = getattr(view, resource_route.method.lower())
                         _add_http_method_to_oas(
-                            oas, path, resource_route.method, handler
+                            app, oas, path, resource_route.method, handler
                         )
                 elif _is_aiohttp_view(resource_route.handler):
                     view: View = resource_route.handler
@@ -294,7 +309,9 @@ def generate_oas(
                             if handler is not None and getattr(
                                 handler, "is_aiohttp_pydantic_handler", False
                             ):
-                                _add_http_method_to_oas(oas, path, method_name, handler)
+                                _add_http_method_to_oas(
+                                    app, oas, path, method_name, handler
+                                )
 
                 elif getattr(
                     resource_route.handler, "is_aiohttp_pydantic_handler", False
@@ -302,7 +319,7 @@ def generate_oas(
                     info = resource_route.get_info()
                     path = oas.paths[info.get("path", info.get("formatter"))]
                     _add_http_method_to_oas(
-                        oas, path, resource_route.method, resource_route.handler
+                        app, oas, path, resource_route.method, resource_route.handler
                     )
 
     if security:
@@ -311,36 +328,26 @@ def generate_oas(
     return oas.spec
 
 
-def _app_key_or_string(app, app_key, str_key):
-    if app_key in app:
-        return app[app_key]
-    if AIOHTTP_HAS_APP_KEY:
-        key_name = "key_" + str_key.replace(" ", "_")
-        warnings.warn(
-            f"Use from aiohttp_pydantic.oas.definition import {key_name}; app[{key_name}] = ... "
-            f"instead of app[{str_key}] = ...",
-            DeprecationWarning,
-            stacklevel=4,
-        )
-    return app[str_key]
-
-
 async def get_oas(request):
     """
     View to generate the Open Api Specification from PydanticView in application.
     """
-    apps = _app_key_or_string(request.app, key_apps_to_expose, "apps to expose")
-    version_spec = _app_key_or_string(request.app, key_version_spec, "version spec")
-    title_spec = _app_key_or_string(request.app, key_title_spec, "title spec")
-    security = _app_key_or_string(request.app, key_security, "security")
-    return json_response(generate_oas(apps, version_spec, title_spec, security))
+    apps = request.app[key_apps_to_expose]
+    version_spec = request.app[key_version_spec]
+    title_spec = request.app[key_title_spec]
+    security = request.app[key_security]
+    try:
+        return json_response(generate_oas(apps, version_spec, title_spec, security))
+    except Exception as e:
+        print(e)
+        raise
 
 
 async def oas_ui(request):
     """
     View to serve the swagger-ui to read open api specification of application.
     """
-    template = _app_key_or_string(request.app, key_index_template, "index template")
+    template = request.app[key_index_template]
     swagger_ui_version = request.app.get(key_swagger_ui_version, "5")
     return Response(
         text=template.render(

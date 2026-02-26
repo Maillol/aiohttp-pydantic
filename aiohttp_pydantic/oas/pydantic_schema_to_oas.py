@@ -1,6 +1,6 @@
+import warnings
 from operator import itemgetter
 from typing import Callable, List, Tuple, Union
-import warnings
 
 from packaging import version
 

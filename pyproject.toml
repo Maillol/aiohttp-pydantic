@@ -1,9 +1,76 @@
 [build-system]
-requires = [
-  "setuptools >= 46.4.0",
-  "wheel",
-]
+requires = ["setuptools >= 77.0.3"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "aiohttp_pydantic"
+dynamic = ["version"]
+requires-python = ">= 3.12"
+authors = [
+  {name = "Vincent Maillol", email = "vincent.maillol@gmail.com"},
+]
+description = "Aiohttp View using pydantic to validate request body and query string regarding method annotations."
+readme = "README.rst"
+license = "MIT"
+keywords = ["aiohttp", "pydantic", "annotations", "validation", "security"]
+
+classifiers = [
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Framework :: aiohttp"
+]
+
+dependencies = [
+    "aiohttp>=3.10",
+    "jinja2",
+    "packaging",
+    "pydantic>=2.0,<3.0",
+    "typing-extensions"
+]
+
+[project.urls]
+Repository = "https://github.com/Maillol/aiohttp-pydantic"
+
+
+[project.optional-dependencies]
+test = [
+    # Python < 3.14
+    "pytest==8.4.2; python_version < '3.14'",
+    "pytest-aiohttp==1.1.0; python_version < '3.14'",
+    "pytest-cov==7.0.0; python_version < '3.14'",
+
+    # Python >= 3.14
+    "pytest==9.0.1; python_version >= '3.14'",
+    "pytest-aiohttp==1.1.0; python_version >= '3.14'",
+    "pytest-cov==7.0.0; python_version >= '3.14'",
+
+    "pyjwt",
+    "readme-renderer==37.3",
+    "build>=1.0.3",
+    "openapi-spec-validator==0.7.2",
+]
+
+ci = [
+    "aiohttp_pydantic[test]",
+    "codecov==2.1.13",
+    "twine>=6,<7"
+]
+
+[tool.setuptools.dynamic]
+version = { attr = "aiohttp_pydantic.__version__" }
+
+[tool.setuptools.packages.find]
+exclude = ["tests*", "demo*"]
+
+[tool.setuptools.package-data]
+"aiohttp_pydantic.oas" = ["index.j2"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

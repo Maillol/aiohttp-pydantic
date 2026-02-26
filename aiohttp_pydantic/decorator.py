@@ -1,3 +1,4 @@
+from copy import copy
 from functools import update_wrapper
 from inspect import iscoroutinefunction, signature
 from typing import Callable, Union
@@ -8,12 +9,14 @@ from pydantic import ValidationError
 
 from .injectors import (
     CONTEXT,
+    AbstractInjector,
     BodyGetter,
     HeadersGetter,
     MatchInfoGetter,
     QueryGetter,
     _parse_func_signature,
 )
+from .security.base import AbstractAuthRule
 
 
 async def json_response_error(
@@ -27,7 +30,26 @@ async def json_response_error(
     return json_response(data=errors, status=400)
 
 
-class InjectParamsFactory:
+class WithAuthMixin:
+
+    def __init__(self):
+        self._auth_rule = None
+
+    def with_auth(self, auth_rule: AbstractAuthRule):
+        copied = copy(self)
+        copied._auth_rule = auth_rule
+        return copied
+
+
+def auth(auth_rule: AbstractAuthRule):
+    def decorator(func):
+        func.aiohttp_pydantic_auth = {"auth_rule": auth_rule}
+        return func
+
+    return decorator
+
+
+class InjectParamsFactory(WithAuthMixin):
     """
     Decorator to unpack the query string, route path, body and http header in
     the parameters of the web handler regarding annotations.
@@ -66,59 +88,76 @@ class InjectParamsFactory:
     """
 
     def __init__(self, on_validation_error=None):
+        super().__init__()
         self._on_validation_error = on_validation_error
 
     @property
     def and_request(self):
-        return InjectParamsRequestFactory(on_validation_error=self._on_validation_error)
+        return InjectParamsRequestFactory(
+            on_validation_error=self._on_validation_error
+        ).with_auth(self._auth_rule)
 
     @property
     def in_method(self):
-        return InjectParamsInMtdFactory(on_validation_error=self._on_validation_error)
+        return InjectParamsInMtdFactory(
+            on_validation_error=self._on_validation_error
+        ).with_auth(self._auth_rule)
 
     def __call__(self, handler=None, /, *, on_validation_error=None):
         if handler is None:
-            return InjectParamsFactory(on_validation_error)
+            return InjectParamsFactory(on_validation_error).with_auth(self._auth_rule)
+
         return _inject_params(
             handler,
             decorate_method=False,
             inject_request=False,
             on_validation_error=self._on_validation_error,
+            auth_rule=self._auth_rule,
         )
 
 
-class InjectParamsRequestFactory:
+class InjectParamsRequestFactory(WithAuthMixin):
 
     def __init__(self, on_validation_error):
+        super().__init__()
         self._on_validation_error = on_validation_error
 
     def __call__(self, handler=None, /, *, on_validation_error=None):
         if handler is None:
             return InjectParamsRequestFactory(
                 on_validation_error=on_validation_error or self._on_validation_error
-            )
+            ).with_auth(self._auth_rule)
         return _inject_params(
             handler,
             decorate_method=False,
             inject_request=True,
             on_validation_error=self._on_validation_error,
+            auth_rule=self._auth_rule,
         )
 
 
-class InjectParamsInMtdFactory:
+class InjectParamsInMtdFactory(WithAuthMixin):
     def __init__(self, on_validation_error):
+        super().__init__()
         self._on_validation_error = on_validation_error
 
     def __call__(self, handler=None, /, *, on_validation_error=None):
         if handler is None:
             return InjectParamsInMtdFactory(
                 on_validation_error or self._on_validation_error
-            )
+            ).with_auth(self._auth_rule)
+
+        # With aiohttp_pydantic.PydanticView the auth decorator can be used
+        # to add `aiohttp_pydantic_auth` attribute.
+        aiohttp_pydantic_auth = getattr(handler, "aiohttp_pydantic_auth", {})
+        auth_rule = aiohttp_pydantic_auth.get("auth_rule", self._auth_rule)
+
         return _inject_params(
             handler,
             decorate_method=True,
             inject_request=False,
             on_validation_error=self._on_validation_error,
+            auth_rule=auth_rule,
         )
 
 
@@ -132,6 +171,7 @@ def _inject_params(
     decorate_method: bool,
     inject_request: bool,
     on_validation_error=None,
+    auth_rule: AbstractAuthRule | None = None,
 ) -> Union[
     Callable[
         [
@@ -171,13 +211,16 @@ def _inject_params(
                 _parse_func_signature(handler_)
             )
 
-        def default_value(args: dict) -> dict:
+        def default_value(args_: dict) -> dict:
             """
             Returns the default values of args.
             """
-            return {name: defaults[name] for name in args if name in defaults}
+            return {name: defaults[name] for name in args_ if name in defaults}
 
-        injectors = []
+        injectors: list[AbstractInjector] = []
+        if auth_rule:
+            auth(auth_rule)(handler)  # Set attribute to the handler function.
+
         if path_args:
             injectors.append(MatchInfoGetter(path_args, default_value(path_args)))
         if body_args:
@@ -190,6 +233,9 @@ def _inject_params(
         if decorate_method:
 
             async def wrapped_handler(self):
+                if auth_rule:
+                    identities = await auth_rule.authn(self.request)
+
                 args = []
                 kwargs = {}
                 for injector in injectors:
@@ -202,11 +248,21 @@ def _inject_params(
                         return await getattr(
                             self, "on_validation_error", on_validation_error
                         )(error, injector.context)
+
+                if auth_rule:
+                    cleaned = dict(zip(path_args.keys(), args))
+                    cleaned.update(kwargs)
+                    for rule, identity in identities:
+                        await rule.authz(self.request, identity, cleaned)
+
                 return await handler(self, *args, **kwargs)
 
         elif inject_request:
 
             async def wrapped_handler(request):
+                if auth_rule:
+                    identities = await auth_rule.authn(request)
+
                 args = [request]
                 kwargs = {}
                 for injector in injectors:
@@ -218,11 +274,20 @@ def _inject_params(
                     except ValidationError as error:
                         return await on_validation_error(error, injector.context)
 
+                if auth_rule:
+                    cleaned = dict(zip(path_args.keys(), args[1:]))
+                    cleaned.update(kwargs)
+                    for rule, identity in identities:
+                        await rule.authz(request, identity, cleaned)
+
                 return await handler_(*args, **kwargs)
 
         else:
 
             async def wrapped_handler(request):
+                if auth_rule:
+                    identities = await auth_rule.authn(request)
+
                 args = []
                 kwargs = {}
                 for injector in injectors:
@@ -233,6 +298,12 @@ def _inject_params(
                             injector.inject(request, args, kwargs)
                     except ValidationError as error:
                         return await on_validation_error(error, injector.context)
+
+                if auth_rule:
+                    cleaned = dict(zip(path_args.keys(), args))
+                    cleaned.update(kwargs)
+                    for rule, identity in identities:
+                        await rule.authz(request, identity, cleaned)
 
                 return await handler_(*args, **kwargs)
 
