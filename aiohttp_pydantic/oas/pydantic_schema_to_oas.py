@@ -12,15 +12,17 @@ def pydantic_schema_to_oas_3_0(schema):
 
     if (any_of := schema.get("anyOf")) is not None:
         pop_null_at = -1
+
         for i, element in enumerate(any_of):
-            if element["type"] == "null":
+            if element.get("type") == "null":
                 pop_null_at = i
                 break
 
         if pop_null_at != -1:
             del any_of[pop_null_at]
             if len(any_of) == 1:
-                schema["type"] = schema.pop("anyOf")[0]["type"]
+                poppers = schema.pop("anyOf")
+                schema.update(poppers[0])
             schema["nullable"] = True
             if schema.get("default", ...) is None:
                 del schema["default"]
