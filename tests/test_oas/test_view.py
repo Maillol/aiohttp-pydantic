@@ -153,7 +153,7 @@ async def test_pets_route_should_have_get_method(generate_oas, aiohttp_client):
                 "required": False,
                 "schema": {
                     "nullable": True,
-                    # "format": "uuid",
+                    "format": "uuid",
                     "type": "string",
                     "title": "promo",
                 },
