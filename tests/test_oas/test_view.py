@@ -9,6 +9,7 @@ import pytest
 from aiohttp_pydantic import PydanticView, oas
 from aiohttp_pydantic.injectors import Group
 from aiohttp_pydantic.oas.typing import r200
+from aiohttp_pydantic.uploaded_file import UploadedFile
 import aiohttp_pydantic.oas.view
 from .bench.model import Pet
 from .bench import (
@@ -193,7 +194,8 @@ async def test_pets_route_should_have_post_method(generate_oas, aiohttp_client):
         "requestBody": {
             "content": {
                 "application/json": {"schema": {"$ref": "#/components/schemas/Pet"}}
-            }
+            },
+            "required": True,
         },
         "responses": {
             "201": {
@@ -340,7 +342,8 @@ async def test_pets_id_route_should_have_put_method(generate_oas, aiohttp_client
         "requestBody": {
             "content": {
                 "application/json": {"schema": {"$ref": "#/components/schemas/Pet"}}
-            }
+            },
+            "required": True,
         },
         "responses": {"200": {"description": ""}},
     }
@@ -424,3 +427,26 @@ async def test_use_parameters_group_should_not_impact_the_oas(aiohttp_client):
     assert await ensure_content_durability(
         await aiohttp_client(app1)
     ) == await ensure_content_durability(await aiohttp_client(app2))
+
+
+async def test_multipart_body_should_be_required():
+    class UploadView(PydanticView):
+        async def post(self, document: UploadedFile) -> r200[Pet]:
+            return web.json_response()
+
+    app = web.Application()
+    app.router.add_view("/upload", UploadView)
+
+    spec = aiohttp_pydantic.oas.view.generate_oas([app])
+
+    assert spec["paths"]["/upload"]["post"]["requestBody"] == {
+        "content": {
+            "multipart/form-data": {
+                "schema": {
+                    "type": "object",
+                    "properties": {"document": {"type": "string", "format": "binary"}},
+                }
+            }
+        },
+        "required": True,
+    }
