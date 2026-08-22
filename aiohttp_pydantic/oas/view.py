@@ -206,6 +206,11 @@ def _add_http_method_to_oas(
                 "application/json": {"schema": body_ref}
             }
 
+        # A handler declaring a body argument rejects a request without one
+        # with a 400, so the body is required. Omitting the flag defaults it
+        # to false, telling generated clients the body may be left out.
+        oas_operation.request_body.required = True
+
     indexes = count()
     for args_location, args in (
         ("path", path_args.items()),
